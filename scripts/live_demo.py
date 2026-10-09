@@ -51,7 +51,8 @@ def main():
     sweep_axis = int(np.argmax(np.abs(centres[-1] - centres[0])))
     depth_dir = np.abs(scan.frame_to_world()[:, :3, 1].mean(axis=0))  # image y axis in world = depth
     depth_axis = int(np.argmax(depth_dir)) if int(np.argmax(depth_dir)) != sweep_axis else int(np.argsort(depth_dir)[-2])
-    template = sweep_thirds_template(lo, hi, sweep_axis, depth_axis)
+    direction = float(np.sign(centres[-1][sweep_axis] - centres[0][sweep_axis]))
+    template = sweep_thirds_template(lo, hi, sweep_axis, depth_axis, sweep_direction=direction)
     labels = template.label_grid(grid) * roi  # named parts restricted to the imaged region
     names = template.part_names()
 

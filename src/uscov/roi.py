@@ -90,13 +90,19 @@ def thyroid_template() -> RegionTemplate:
     return RegionTemplate("thyroid", parts)
 
 
-def sweep_thirds_template(lo: np.ndarray, hi: np.ndarray, sweep_axis: int, depth_axis: int) -> RegionTemplate:
+def sweep_thirds_template(lo: np.ndarray, hi: np.ndarray, sweep_axis: int, depth_axis: int,
+                          sweep_direction: float = 1.0) -> RegionTemplate:
     """Generic named region for a non-anatomical target (phantom, forearm): the extent split into
     start/middle/end thirds along the sweep and superficial/deep halves along depth. Names let the
-    cue read 'end third, deep' until an anatomical template is available."""
+    cue read 'end third, deep' until an anatomical template is available.
+
+    `sweep_direction` < 0 means the sweep ran toward decreasing coordinate, so 'start' is the high end."""
     parts = []
     size = hi - lo
-    for k, third in enumerate(("start third", "middle third", "end third")):
+    thirds = ("start third", "middle third", "end third")
+    if sweep_direction < 0:
+        thirds = thirds[::-1]
+    for k, third in enumerate(thirds):
         for j, depth in enumerate(("superficial", "deep")):
             c = (lo + hi) / 2.0
             h = size / 2.0
