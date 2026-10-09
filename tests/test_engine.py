@@ -35,17 +35,18 @@ def test_pixel_grid_world_mapping():
 
 
 def test_full_sweep_fills_box_and_shadow_is_not_covered():
-    scan = synthetic_scan(dark_band=(30, 44))
-    grid = grid_for_scan(scan, voxel_mm=2.0, pad_mm=2.0)
-    acc = CoverageAccumulator(scan, grid, pixel_step=2)
-    cov = acc.run()
-    vol = cov.volume("conf_max")
-    # a voxel in the bright region, mid-sweep, should be well covered
-    bright = grid.to_index(np.array([[20.0, 5.0, 30.0]]))[0][0]
-    shadow = grid.to_index(np.array([[20.0, 18.5, 30.0]]))[0][0]  # rows 30-44 -> y 15-22 mm
-    assert cov.conf_max[bright] > 0.8
-    assert cov.conf_max[shadow] < 0.2
-    assert vol.max() <= 1.0
+    # dark band from row 30 to the bottom = a shadow with nothing beyond it, under both confidence models
+    for model in ("brightness", "ray"):
+        scan = synthetic_scan(dark_band=(30, 64))
+        grid = grid_for_scan(scan, voxel_mm=2.0, pad_mm=2.0)
+        acc = CoverageAccumulator(scan, grid, pixel_step=2, conf_model=model)
+        cov = acc.run()
+        vol = cov.volume("conf_max")
+        bright = grid.to_index(np.array([[20.0, 5.0, 30.0]]))[0][0]
+        shadow = grid.to_index(np.array([[20.0, 24.5, 30.0]]))[0][0]  # rows 30-64 -> y 15-32 mm
+        assert cov.conf_max[bright] > 0.8, model
+        assert cov.conf_max[shadow] < 0.2, model
+        assert vol.max() <= 1.0
 
 
 def test_partial_sweep_has_lower_completeness_and_a_thin_region_near_the_end():

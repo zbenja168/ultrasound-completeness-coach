@@ -26,6 +26,7 @@ def main():
     ap.add_argument("--partial", type=float, default=0.6, help="fraction of the sweep to score as a partial scan")
     ap.add_argument("--out", default="outputs/coverage")
     ap.add_argument("--gif", action="store_true")
+    ap.add_argument("--conf", default="ray", choices=["ray", "brightness"], help="confidence model")
     a = ap.parse_args()
 
     ds = index_dataset(a.dataset_dir)
@@ -36,7 +37,7 @@ def main():
     grid = grid_for_scan(scan, voxel_mm=a.voxel)
     print(f"grid shape {grid.shape} = {grid.n_voxels/1e6:.2f} M voxels")
 
-    ref = CoverageAccumulator(scan, grid, pixel_step=a.pixel_step).run(frame_step=a.frame_step)
+    ref = CoverageAccumulator(scan, grid, pixel_step=a.pixel_step, conf_model=a.conf).run(frame_step=a.frame_step)
     roi = roi_from_reference(ref)
     full = completeness(ref, roi)
     print(f"reference ROI: {full.n_roi} voxels ({full.n_roi * a.voxel**3 / 1000:.1f} cm^3), "
@@ -46,7 +47,8 @@ def main():
     plot_projections(ref, out / f"{scan.name}_reference.png", f"{scan.name} reference (tracked)", roi)
 
     n_part = int(scan.n_frames * a.partial)
-    part = CoverageAccumulator(scan, grid, pixel_step=a.pixel_step).add_frames(range(0, n_part, a.frame_step))
+    part = CoverageAccumulator(scan, grid, pixel_step=a.pixel_step, conf_model=a.conf).add_frames(
+        range(0, n_part, a.frame_step))
     pc = completeness(part, roi)
     print(f"partial sweep (first {a.partial:.0%} of frames): completeness {pc.completeness:.3f}, "
           f"mean conf {pc.mean_conf:.2f}")
@@ -57,7 +59,7 @@ def main():
     plot_projections(part, out / f"{scan.name}_partial.png", f"{scan.name} partial {a.partial:.0%}", roi)
 
     if a.gif:
-        acc = CoverageAccumulator(scan, grid, pixel_step=a.pixel_step)
+        acc = CoverageAccumulator(scan, grid, pixel_step=a.pixel_step, conf_model=a.conf)
         animate_fill(acc, out / f"{scan.name}_fill.gif", roi=roi, frame_step=max(1, a.frame_step * 3))
         print("wrote", out / f"{scan.name}_fill.gif")
 

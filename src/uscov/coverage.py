@@ -117,7 +117,8 @@ class CoverageAccumulator:
 
     def __init__(self, scan: Scan, grid: GridSpec, T_frame_to_world: np.ndarray | None = None,
                  pixel_step: int = 4, conf_params: ConfidenceParams | None = None,
-                 fan: np.ndarray | None = None):
+                 fan: np.ndarray | None = None, conf_model: str = "ray"):
+        """conf_model: 'ray' (scan-line shadow model, default) or 'brightness' (Stage 0 rule)."""
         self.scan = scan
         self.grid = grid
         self.T = scan.frame_to_world() if T_frame_to_world is None else T_frame_to_world
@@ -127,12 +128,26 @@ class CoverageAccumulator:
         self.fan = fan_mask_from_scan(scan.frames) if fan is None else fan
         self.normals = frame_normals_world(self.T)
         self.map = CoverageMap.empty(grid)
+        self.conf_model = conf_model
+        self._ray = None
+        if conf_model == "ray":
+            from .confidence import RayConfidence
+            self._ray = RayConfidence(self.fan)
+        elif conf_model != "brightness":
+            raise ValueError(f"unknown conf_model {conf_model!r}")
 
     def confidence_image(self, i: int) -> np.ndarray:
+        if self._ray is not None:
+            return self._ray.full(self.scan.frames[i])
         return pixel_confidence(self.scan.frames[i], self.fan, self.params)
 
+    def _confidence_at_samples(self, i: int) -> np.ndarray:
+        if self._ray is not None:
+            return self._ray.at_pixels(self.scan.frames[i], self.rr, self.cc)
+        return pixel_confidence(self.scan.frames[i], self.fan, self.params)[self.rr, self.cc]
+
     def add_frame(self, i: int) -> None:
-        conf = self.confidence_image(i)[self.rr, self.cc]
+        conf = self._confidence_at_samples(i)
         keep = conf > 0.0
         m = self.map
         if not np.any(keep):
