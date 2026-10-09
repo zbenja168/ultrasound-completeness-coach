@@ -47,6 +47,7 @@ organ itself (forearm stands in for thyroid).
 
 | Date | Event |
 | --- | --- |
+| 2026-10-09 | Hardware settled: the school's GE machine is a cart with a video output port; department has approved plugging a capture card into it. Stage 1 frame access = capture card, no handheld workaround needed |
 | 2026-10-09 | Faculty sponsor secured (colorectal surgeon, extensive ultrasound experience, full support). Engineering partner secured. School handheld reported as GE (model to confirm); frame-access route under investigation |
 | 2026-10-09 | Project log created (shared doc + this file) |
 | 2026-10-09 | GitHub repository created (private), all commits pushed |
@@ -71,7 +72,7 @@ organ itself (forearm stands in for thyroid).
 - [ ] Anatomical target region (thyroid outline) so gaps get names
 - [ ] Measure a real marker-cube rig: pose error, jitter spectrum, smoother window
 - [ ] Pick clinical region size (4–5 mm) that absorbs ~2 mm pose error
-- [ ] School handheld is GE (model to confirm). Determine frame-access route: no public third-party streaming API on GE handhelds; likely screen/HDMI capture or a Clarius loaner
+- [x] Frame access settled 2026-10-09: GE cart with video port, permission granted; use a USB capture card via PLUS
 - [ ] Five need-validation conversations (see proposal)
 - [x] Faculty sponsor (colorectal surgeon) and engineering partner secured 2026-10-09; next: brief both, agree IRB timeline
 - [ ] Apply for ImFusion academic SDK
