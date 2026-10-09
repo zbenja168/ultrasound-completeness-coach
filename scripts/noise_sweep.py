@@ -77,7 +77,7 @@ def main():
     for ax, key, title in zip(axes, ["mean_err_mm", "false_coverage", "dice"],
                               ["mean tracking error (mm)", "false coverage rate", "Dice vs reference map"]):
         data = [[r[key] for r in rows if r["preset"] == p] for p in presets]
-        ax.boxplot(data, labels=presets); ax.set_title(title); ax.tick_params(axis="x", rotation=20)
+        ax.boxplot(data, tick_labels=presets); ax.set_title(title); ax.tick_params(axis="x", rotation=20)
     fig.tight_layout(); fig.savefig(out / "noise_sweep.png", dpi=120)
     print("wrote", out / "noise_sweep.png")
 

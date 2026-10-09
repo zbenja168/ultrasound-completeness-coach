@@ -37,8 +37,8 @@ PRESETS: dict[str, NoiseSpec] = {
     "perfect": NoiseSpec("perfect"),
     "optical": NoiseSpec("optical", jitter_mm=0.25, jitter_deg=0.1),
     "aruco_phone": NoiseSpec("aruco_phone", jitter_mm=2.5, jitter_deg=1.0, drift_mm_per_frame=0.02),
-    "sensorless": NoiseSpec("sensorless", jitter_mm=0.1, bias_frac_of_step=0.05, bias_deg_per_frame=0.01,
-                            drift_mm_per_frame=0.05),
+    "sensorless": NoiseSpec("sensorless", jitter_mm=0.1, bias_frac_of_step=0.05, bias_deg_per_frame=0.003,
+                            drift_mm_per_frame=0.03),
     "arkit_free": NoiseSpec("arkit_free", jitter_mm=1.0, jitter_deg=0.3, drift_mm_per_frame=1.0,
                             drift_deg_per_frame=0.05),
 }
@@ -49,6 +49,13 @@ def _se3(t: np.ndarray, rotvec_deg: np.ndarray) -> np.ndarray:
     T[:3, :3] = R.from_rotvec(np.deg2rad(rotvec_deg)).as_matrix()
     T[:3, 3] = t
     return T
+
+
+def _perturb_about_tool(T: np.ndarray, t_world: np.ndarray, rotvec_deg: np.ndarray) -> np.ndarray:
+    """Rotate about the tool's own origin (not the world origin) and translate in world coordinates."""
+    out = T @ _se3(np.zeros(3), rotvec_deg)
+    out[:3, 3] += t_world
+    return out
 
 
 def corrupt_poses(tforms: np.ndarray, spec: NoiseSpec, seed: int = 0) -> np.ndarray:
@@ -71,19 +78,19 @@ def corrupt_poses(tforms: np.ndarray, spec: NoiseSpec, seed: int = 0) -> np.ndar
     for i in range(1, N):
         out[i] = out[i - 1] @ rel[i - 1] @ eps
 
-    # random-walk offset in world frame (IMU/VIO-style drift)
+    # random-walk offset (IMU/VIO-style drift): translation in world, rotation about the tool origin
     if spec.drift_mm_per_frame > 0 or spec.drift_deg_per_frame > 0:
         wt = np.cumsum(rng.normal(scale=spec.drift_mm_per_frame, size=(N, 3)), axis=0)
         wr = np.cumsum(rng.normal(scale=spec.drift_deg_per_frame, size=(N, 3)), axis=0)
         for i in range(1, N):
-            out[i] = _se3(wt[i], wr[i]) @ out[i]
+            out[i] = _perturb_about_tool(out[i], wt[i], wr[i])
 
     # independent per-frame jitter (marker/optical-style)
     if spec.jitter_mm > 0 or spec.jitter_deg > 0:
         jt = rng.normal(scale=spec.jitter_mm, size=(N, 3))
         jr = rng.normal(scale=spec.jitter_deg, size=(N, 3))
         for i in range(1, N):
-            out[i] = _se3(jt[i], jr[i]) @ out[i]
+            out[i] = _perturb_about_tool(out[i], jt[i], jr[i])
     return out
 
 
