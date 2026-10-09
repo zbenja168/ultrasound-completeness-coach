@@ -33,13 +33,15 @@ organ itself (forearm stands in for thyroid).
 | Project log doc | Shared version of this file | https://claude.ai/code/artifact/96594db2-a83c-4954-a5aa-46c0d7536107 |
 | Research report | 5,000-word sourced feasibility report | `reports/Guided 3D ultrasound mapping feasibility.md` |
 | Research notes | Five source-note files | `research_notes/Guided 3D ultrasound mapping feasibility/` |
-| Engine | `data.py`, `coverage.py`, `score.py`, `noise.py`, `viz.py` | `src/uscov/` |
-| Scripts | inspect, run coverage, noise sweep | `scripts/` |
-| Tests | six unit tests | `tests/test_engine.py` |
+| Engine | `data.py`, `coverage.py`, `score.py`, `noise.py`, `viz.py`, plus Stage 1: `confidence.py`, `roi.py`, `tracker.py`, `live.py` | `src/uscov/` |
+| Scripts | inspect, run coverage, noise sweep, confidence compare, hybrid sweep, live demo | `scripts/` |
+| Tests | 13 unit tests | `tests/test_engine.py`, `tests/test_stage1.py`, `tests/test_live.py` |
 | Raw data | TUS-REC 2024 val (4.8 GB), 2025 val (1.2 GB), CC BY-NC-SA | `data/raw/` (local only, see README for links) |
 | Extracted data | 78 scans as HDF5, 13 GB | `data/extracted/` (local only) |
 | Coverage outputs | projections + fill GIFs | `outputs/coverage/`, `outputs/coverage_2024/` (local only) |
 | Inspection outputs | sample frames + confidence, trajectories | `outputs/inspect/`, `outputs/inspect_2024/` (local only) |
+| Hybrid tracker outputs | CSV: dropout length x strategy | `outputs/hybrid/` (local only) |
+| Live demo outputs | replay GIF + final frame | `outputs/live_demo/` (local only) |
 | Noise sweep outputs | CSV + box plots: 2025; 2024 raw; 2024 min-hits; 2024 smoothed | `outputs/noise_2025/`, `outputs/noise_2024/`, `outputs/noise_2024_mh/`, `outputs/noise_2024_smooth9/` (local only) |
 | Python environment | numpy, scipy, h5py, matplotlib, tqdm, pytest | `.venv/` (rebuild from `requirements.txt`) |
 
@@ -47,6 +49,7 @@ organ itself (forearm stands in for thyroid).
 
 | Date | Event |
 | --- | --- |
+| 2026-10-09 | Stage 1 software built and tested (13 tests): ray-based shadow confidence (now default), named region templates (thyroid, sweep-thirds), hybrid marker/image tracker, ArUco cube tracker + capture/replay sources, end-to-end replay demo. Hybrid sweep: bridging keeps completeness 0.97 through 5 s camera dropouts vs 0.58 when frames are dropped. Marker rig rules: camera <30 cm, markers >=30-40 mm, two faces visible |
 | 2026-10-09 | Decision: hybrid tracking. Marker cube (camera) is the primary pose source; image-based tracking bridges camera dropouts. Not competing with published sensorless methods; the tracking contribution is the tolerance question. Engineering partner invited to repo |
 | 2026-10-09 | Hardware settled: the school's GE machine is a cart with a video output port; department has approved plugging a capture card into it. Stage 1 frame access = capture card, no handheld workaround needed |
 | 2026-10-09 | Faculty sponsor secured (colorectal surgeon, extensive ultrasound experience, full support). Engineering partner secured. School handheld reported as GE (model to confirm); frame-access route under investigation |
@@ -69,13 +72,15 @@ organ itself (forearm stands in for thyroid).
 
 ## Open items for Stage 1
 
-- [ ] Replace brightness rule with a propagation-based ultrasound confidence map
-- [ ] Anatomical target region (thyroid outline) so gaps get names
+- [x] Ray-based shadow confidence model built 2026-10-09 (thresholds to calibrate on the phantom)
+- [x] Named region templates built 2026-10-09 (thyroid + sweep-thirds); registration to a real neck is Stage 2
 - [ ] Measure a real marker-cube rig: pose error, jitter spectrum, smoother window
 - [ ] Pick clinical region size (4–5 mm) that absorbs ~2 mm pose error
+- [ ] Bench day: PLUS fCal spatial + temporal calibration; capture-card crop and mm/px from the on-screen scale; camera intrinsics (chessboard)
+- [ ] Build the marker cube per the rig rules (camera <30 cm, markers >=30-40 mm, two faces visible)
 - [x] Frame access settled 2026-10-09: GE cart with video port, permission granted; use a USB capture card via PLUS
 - [ ] Five need-validation conversations (see proposal)
 - [x] Faculty sponsor (colorectal surgeon) and engineering partner secured 2026-10-09; next: brief both, agree IRB timeline
 - [ ] Apply for ImFusion academic SDK
-- [ ] Hybrid tracker: marker pose as anchor, image-based estimate bridges camera dropouts; define hand-off rule, test with simulated dropouts on TUS-REC
+- [x] Hybrid tracker built and tested 2026-10-09: bridging holds through 5 s dropouts
 - [ ] Run public DualTrack on these sweeps to measure real image-only drift (feeds both the hybrid bridge and the tolerance paper)

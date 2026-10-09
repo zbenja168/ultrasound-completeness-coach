@@ -76,3 +76,36 @@ Caveats: noise models are literature-anchored simulations, not measured trackers
 swept slab of a single sweep, which is the worst case for shell inflation; forearm stands in for thyroid.
 
 Reproduce: `scripts/run_coverage.py`, `scripts/noise_sweep.py --min-hits 1,3,5`, `--smooth 9`. CSVs under `outputs/`.
+
+## Stage 1 software (2026-10-09)
+
+Built ahead of the bench session so the lab day is hardware-only. All on the public sweeps; 13 tests pass.
+
+| Module | What it adds | Validation |
+| --- | --- | --- |
+| `src/uscov/confidence.py` | Ray-based shadow model: confidence follows each scan line from the probe face; a dark region with signal beyond it (cyst) keeps credit, a dark region with nothing beyond (bone shadow, dropout, no contact) loses it. Fan geometry (virtual apex, angles, radii) is recovered from the mask automatically; linear probes fall back to parallel rays | Synthetic shadow vs cyst test; visual check on real frames (`scripts/confidence_compare.py`); now the default `conf_model="ray"` |
+| `src/uscov/roi.py` | Named region templates (ellipsoids/boxes) so a gap gets a name. `thyroid_template()` = 2 lobes x (upper, lower pole) + isthmus; `sweep_thirds_template()` = start/middle/end x superficial/deep for phantoms; per-part completeness report | Unit tests; live demo cue reads "next: end third, deep (45%)" when a sweep is stopped at 80% |
+| `src/uscov/tracker.py` | Hybrid pose fusion: marker pose is the anchor; during camera dropouts the last pose is propagated with image-based relative motion (or constant velocity); frames tagged PRIMARY/BRIDGED with gap length and a confidence multiplier | Unit test + `scripts/hybrid_sweep.py` on 4 real sweeps (table below) |
+| `src/uscov/live.py` | Frame sources (capture card via OpenCV, replay of recorded sweeps), ArUco cube tracker (6-face board, sub-pixel corners, solvePnP), marker bitmap generator | Synthetic virtual-camera tests: single face and two faces |
+| `scripts/live_demo.py` | End-to-end replay "as if live": dropouts -> hybrid fusion -> ray confidence -> named parts -> cue; writes a GIF | `outputs/live_demo/` |
+
+**Hybrid tracker vs dropouts** (4 straight/C sweeps, 3 dropouts each, marker-style primary poses, medians):
+
+| gap (frames @20 fps) | strategy | completeness | false gap | Dice |
+| --- | --- | ---: | ---: | ---: |
+| 10 (0.5 s) | drop frames | 0.986 | 1.4% | 0.880 |
+| 40 (2 s)   | drop frames | 0.902 | 9.8% | 0.829 |
+| 40 (2 s)   | bridge with image motion | 0.984 | 1.6% | 0.889 |
+| 100 (5 s)  | drop frames | 0.576 | 42.4% | 0.678 |
+| 100 (5 s)  | bridge with image motion | 0.968 | 3.2% | 0.889 |
+| 100 (5 s)  | bridge with constant velocity | 0.585 | 41.5% | 0.685 |
+
+Bridging with image-based motion keeps the map intact through 5-second camera dropouts (bridged-frame error ~2.6 mm);
+constant-velocity extrapolation is useless beyond a second. Simply dropping untracked frames loses the map.
+
+**Marker rig design rules from the synthetic camera tests:** a single 24 mm marker at 40 cm has ~7 mm depth ambiguity;
+at 25 cm it is ~2 mm; a 40 mm marker at 40 cm ~3.5 mm. Two visible faces resolve the ambiguity (sub-mm with exact corners).
+So: camera within ~30 cm, markers >= 30-40 mm, cube oriented so two faces are visible, sub-pixel corner refinement on.
+
+Still open for the bench: spatial calibration (image <-> cube) and temporal alignment come from PLUS fCal on the day;
+the ray model's thresholds are to be calibrated against the phantom; the thyroid template needs a registration step (Stage 2).
