@@ -31,7 +31,9 @@ def main():
     ap.add_argument("--pixel-step", type=int, default=4)
     ap.add_argument("--frame-step", type=int, default=2)
     ap.add_argument("--out", default="outputs/noise")
+    ap.add_argument("--min-hits", default="1,3", help="comma list of min_hits values to evaluate")
     a = ap.parse_args()
+    min_hits_list = [int(x) for x in a.min_hits.split(",")]
 
     ds = index_dataset(a.dataset_dir)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
@@ -53,16 +55,20 @@ def main():
             te = trajectory_error(T_gt, Tn, centre_px)
             cand = CoverageAccumulator(scan, grid, T_frame_to_world=Tn, pixel_step=a.pixel_step).run(
                 frame_step=a.frame_step)
-            cc = completeness(cand, roi)
-            tr = truthfulness(cand, ref)
-            row = dict(scan=scan.name, preset=p, seed=s, n_frames=scan.n_frames, path_mm=te.path_length_mm,
-                       final_drift_mm=te.final_drift_mm, drift_rate=te.final_drift_rate, mean_err_mm=te.mean_err_mm,
-                       completeness_claimed=cc.completeness, false_coverage=tr.false_coverage,
-                       false_gap=tr.false_gap, dice=tr.dice)
-            rows.append(row)
-            print(f"   {p:12s} seed {s}: drift {te.final_drift_mm:6.1f} mm ({te.final_drift_rate*100:4.1f}%), "
-                  f"mean err {te.mean_err_mm:5.1f} mm | claimed completeness {cc.completeness:.3f} "
-                  f"false-cov {tr.false_coverage:.3f} false-gap {tr.false_gap:.3f} dice {tr.dice:.3f}")
+            for mh in min_hits_list:
+                roi_mh = roi_from_reference(ref, min_hits=mh)
+                cc = completeness(cand, roi_mh, min_hits=mh)
+                tr = truthfulness(cand, ref, min_hits=mh)
+                row = dict(scan=scan.name, preset=p, seed=s, min_hits=mh, n_frames=scan.n_frames,
+                           path_mm=te.path_length_mm, final_drift_mm=te.final_drift_mm,
+                           drift_rate=te.final_drift_rate, mean_err_mm=te.mean_err_mm,
+                           completeness_claimed=cc.completeness, false_coverage=tr.false_coverage,
+                           false_gap=tr.false_gap, dice=tr.dice)
+                rows.append(row)
+                print(f"   {p:12s} seed {s} min_hits {mh}: drift {te.final_drift_mm:6.1f} mm "
+                      f"({te.final_drift_rate*100:4.1f}%), mean err {te.mean_err_mm:5.1f} mm | "
+                      f"claimed completeness {cc.completeness:.3f} false-cov {tr.false_coverage:.3f} "
+                      f"false-gap {tr.false_gap:.3f} dice {tr.dice:.3f}", flush=True)
 
     csv_path = out / "noise_sweep.csv"
     with open(csv_path, "w", newline="") as f:
@@ -73,11 +79,13 @@ def main():
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    fig, axes = plt.subplots(1, 3, figsize=(13, 4))
-    for ax, key, title in zip(axes, ["mean_err_mm", "false_coverage", "dice"],
-                              ["mean tracking error (mm)", "false coverage rate", "Dice vs reference map"]):
-        data = [[r[key] for r in rows if r["preset"] == p] for p in presets]
-        ax.boxplot(data, tick_labels=presets); ax.set_title(title); ax.tick_params(axis="x", rotation=20)
+    fig, axes = plt.subplots(len(min_hits_list), 3, figsize=(13, 4 * len(min_hits_list)), squeeze=False)
+    for r_i, mh in enumerate(min_hits_list):
+        for ax, key, title in zip(axes[r_i], ["mean_err_mm", "false_coverage", "dice"],
+                                  ["mean tracking error (mm)", "false coverage rate", "Dice vs reference map"]):
+            data = [[r[key] for r in rows if r["preset"] == p and r["min_hits"] == mh] for p in presets]
+            ax.boxplot(data, tick_labels=presets); ax.set_title(f"{title}  (min_hits={mh})")
+            ax.tick_params(axis="x", rotation=20)
     fig.tight_layout(); fig.savefig(out / "noise_sweep.png", dpi=120)
     print("wrote", out / "noise_sweep.png")
 

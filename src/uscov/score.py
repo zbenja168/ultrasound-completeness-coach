@@ -22,9 +22,20 @@ def roi_from_reference(ref: CoverageMap, thresh: float = 0.5, min_hits: int = 1)
     return (ref.conf_max >= thresh) & (ref.hits >= min_hits)
 
 
-def completeness(cov: CoverageMap, roi: np.ndarray, thresh: float = 0.5) -> CompletenessResult:
+def covered_mask(cov: CoverageMap, thresh: float = 0.5, min_hits: int = 1) -> np.ndarray:
+    """Voxels counted as imaged: confident enough AND hit by at least `min_hits` frames.
+
+    Frames arrive every ~0.3 mm, so a genuinely imaged 2 mm voxel collects several hits; a voxel
+    touched only by a jittered outlier frame does not. min_hits is the cheap defence against
+    tracking jitter inflating the map.
+    """
+    return (cov.conf_max >= thresh) & (cov.hits >= min_hits)
+
+
+def completeness(cov: CoverageMap, roi: np.ndarray, thresh: float = 0.5, min_hits: int = 1) -> CompletenessResult:
+    inroi_mask = covered_mask(cov, thresh, min_hits)[roi]
     inroi = cov.conf_max[roi]
-    covered = inroi >= thresh
+    covered = inroi_mask
     n = int(roi.sum())
     return CompletenessResult(
         completeness=float(covered.mean()) if n else 0.0,
@@ -44,9 +55,9 @@ class TruthfulnessResult:
     n_cand: int
 
 
-def truthfulness(cand: CoverageMap, ref: CoverageMap, thresh: float = 0.5) -> TruthfulnessResult:
-    a = cand.conf_max >= thresh
-    b = ref.conf_max >= thresh
+def truthfulness(cand: CoverageMap, ref: CoverageMap, thresh: float = 0.5, min_hits: int = 1) -> TruthfulnessResult:
+    a = covered_mask(cand, thresh, min_hits)
+    b = covered_mask(ref, thresh, min_hits)
     inter = int((a & b).sum())
     na, nb = int(a.sum()), int(b.sum())
     return TruthfulnessResult(
