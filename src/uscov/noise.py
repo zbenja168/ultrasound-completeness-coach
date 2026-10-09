@@ -94,6 +94,25 @@ def corrupt_poses(tforms: np.ndarray, spec: NoiseSpec, seed: int = 0) -> np.ndar
     return out
 
 
+def smooth_poses(tforms: np.ndarray, window: int = 9) -> np.ndarray:
+    """Moving-average pose filter: mean translation and mean rotation over a centred window.
+
+    Independent per-frame jitter falls by ~sqrt(window); smooth drift is untouched. At 20 fps and
+    ~0.3 mm/frame a 9-frame window averages ~0.45 s / ~3 mm of travel, which a 2 mm coverage grid tolerates.
+    """
+    N = tforms.shape[0]
+    if window <= 1 or N < 3:
+        return tforms.copy()
+    half = window // 2
+    out = tforms.copy()
+    rots = R.from_matrix(tforms[:, :3, :3])
+    for i in range(N):
+        lo, hi = max(0, i - half), min(N, i + half + 1)
+        out[i, :3, 3] = tforms[lo:hi, :3, 3].mean(axis=0)
+        out[i, :3, :3] = rots[lo:hi].mean().as_matrix()
+    return out
+
+
 @dataclass
 class TrajectoryError:
     final_drift_mm: float

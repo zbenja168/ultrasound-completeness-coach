@@ -87,6 +87,25 @@ def test_noise_presets_order_and_truthfulness():
     assert t.false_coverage > 0.0
 
 
+def test_smoothing_reduces_jitter_but_not_drift():
+    from uscov.noise import smooth_poses
+    scan = synthetic_scan(n=200, step_mm=0.5)
+    T_gt = scan.frame_to_world()
+    p = np.array([40.0, 32.0, 0.0, 1.0])
+    jit = corrupt_poses(scan.tforms, NoiseSpec("jit", jitter_mm=2.5, jitter_deg=1.0), seed=3)
+    e_raw = trajectory_error(T_gt, scan.frame_to_world(jit), p)
+    e_sm = trajectory_error(T_gt, scan.frame_to_world(smooth_poses(jit, 9)), p)
+    assert e_sm.mean_err_mm < 0.5 * e_raw.mean_err_mm
+    # smoothing clean poses barely moves them
+    e_clean = trajectory_error(T_gt, scan.frame_to_world(smooth_poses(scan.tforms, 9)), p)
+    assert e_clean.mean_err_mm < 0.05
+    # smooth bias drift is not reduced by averaging
+    drift = corrupt_poses(scan.tforms, NoiseSpec("bias", bias_frac_of_step=0.05), seed=3)
+    e_d = trajectory_error(T_gt, scan.frame_to_world(drift), p)
+    e_ds = trajectory_error(T_gt, scan.frame_to_world(smooth_poses(drift, 9)), p)
+    assert abs(e_ds.final_drift_mm - e_d.final_drift_mm) < 0.1 * e_d.final_drift_mm
+
+
 def test_perfect_noise_is_identity():
     scan = synthetic_scan(n=20)
     Tn = corrupt_poses(scan.tforms, NoiseSpec("none"), seed=0)

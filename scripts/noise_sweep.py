@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from uscov.data import index_dataset  # noqa: E402
 from uscov.coverage import CoverageAccumulator, grid_for_scan  # noqa: E402
 from uscov.score import roi_from_reference, completeness, truthfulness  # noqa: E402
-from uscov.noise import PRESETS, corrupt_poses, trajectory_error  # noqa: E402
+from uscov.noise import PRESETS, corrupt_poses, trajectory_error, smooth_poses  # noqa: E402
 
 
 def main():
@@ -32,6 +32,8 @@ def main():
     ap.add_argument("--frame-step", type=int, default=2)
     ap.add_argument("--out", default="outputs/noise")
     ap.add_argument("--min-hits", default="1,3", help="comma list of min_hits values to evaluate")
+    ap.add_argument("--smooth", type=int, default=0,
+                    help="moving-average window (frames) applied to corrupted poses before mapping; 0 = off")
     a = ap.parse_args()
     min_hits_list = [int(x) for x in a.min_hits.split(",")]
 
@@ -44,8 +46,12 @@ def main():
         h, w = scan.shape
         T_gt = scan.frame_to_world()
         centre_px = np.array([(w + 1) / 2, (h + 1) / 2, 0.0, 1.0])
-        noisy = {(p, s): scan.frame_to_world(corrupt_poses(scan.tforms, PRESETS[p], seed=s))
-                 for p in presets for s in range(a.seeds)}
+        def make(p, s):
+            Tn = corrupt_poses(scan.tforms, PRESETS[p], seed=s)
+            if a.smooth > 1:
+                Tn = smooth_poses(Tn, a.smooth)
+            return scan.frame_to_world(Tn)
+        noisy = {(p, s): make(p, s) for p in presets for s in range(a.seeds)}
         grid = grid_for_scan(scan, voxel_mm=a.voxel, extra_T=list(noisy.values()))
         ref = CoverageAccumulator(scan, grid, pixel_step=a.pixel_step).run(frame_step=a.frame_step)
         roi = roi_from_reference(ref)
@@ -59,7 +65,7 @@ def main():
                 roi_mh = roi_from_reference(ref, min_hits=mh)
                 cc = completeness(cand, roi_mh, min_hits=mh)
                 tr = truthfulness(cand, ref, min_hits=mh)
-                row = dict(scan=scan.name, preset=p, seed=s, min_hits=mh, n_frames=scan.n_frames,
+                row = dict(scan=scan.name, preset=p, seed=s, min_hits=mh, smooth=a.smooth, n_frames=scan.n_frames,
                            path_mm=te.path_length_mm, final_drift_mm=te.final_drift_mm,
                            drift_rate=te.final_drift_rate, mean_err_mm=te.mean_err_mm,
                            completeness_claimed=cc.completeness, false_coverage=tr.false_coverage,
