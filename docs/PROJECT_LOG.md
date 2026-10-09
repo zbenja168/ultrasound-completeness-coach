@@ -47,6 +47,7 @@ organ itself (forearm stands in for thyroid).
 
 | Date | Event |
 | --- | --- |
+| 2026-10-09 | Faculty sponsor secured (colorectal surgeon, extensive ultrasound experience, full support). Engineering partner secured. School handheld reported as GE (model to confirm); frame-access route under investigation |
 | 2026-10-09 | Project log created (shared doc + this file) |
 | 2026-10-09 | GitHub repository created (private), all commits pushed |
 | 2026-10-09 | README Stage 0 results table; Stage 0 results section added to proposal doc |
@@ -70,8 +71,8 @@ organ itself (forearm stands in for thyroid).
 - [ ] Anatomical target region (thyroid outline) so gaps get names
 - [ ] Measure a real marker-cube rig: pose error, jitter spectrum, smoother window
 - [ ] Pick clinical region size (4–5 mm) that absorbs ~2 mm pose error
-- [ ] Confirm the school's handheld and whether it streams frames (Clarius yes; Butterfly no for third parties)
+- [ ] School handheld is GE (model to confirm). Determine frame-access route: no public third-party streaming API on GE handhelds; likely screen/HDMI capture or a Clarius loaner
 - [ ] Five need-validation conversations (see proposal)
-- [ ] Faculty sponsor for IRB; engineering partner
+- [x] Faculty sponsor (colorectal surgeon) and engineering partner secured 2026-10-09; next: brief both, agree IRB timeline
 - [ ] Apply for ImFusion academic SDK
 - [ ] Optional: run public DualTrack on these sweeps to measure real image-only drift
