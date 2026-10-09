@@ -47,6 +47,7 @@ organ itself (forearm stands in for thyroid).
 
 | Date | Event |
 | --- | --- |
+| 2026-10-09 | Decision: hybrid tracking. Marker cube (camera) is the primary pose source; image-based tracking bridges camera dropouts. Not competing with published sensorless methods; the tracking contribution is the tolerance question. Engineering partner invited to repo |
 | 2026-10-09 | Hardware settled: the school's GE machine is a cart with a video output port; department has approved plugging a capture card into it. Stage 1 frame access = capture card, no handheld workaround needed |
 | 2026-10-09 | Faculty sponsor secured (colorectal surgeon, extensive ultrasound experience, full support). Engineering partner secured. School handheld reported as GE (model to confirm); frame-access route under investigation |
 | 2026-10-09 | Project log created (shared doc + this file) |
@@ -76,4 +77,5 @@ organ itself (forearm stands in for thyroid).
 - [ ] Five need-validation conversations (see proposal)
 - [x] Faculty sponsor (colorectal surgeon) and engineering partner secured 2026-10-09; next: brief both, agree IRB timeline
 - [ ] Apply for ImFusion academic SDK
-- [ ] Optional: run public DualTrack on these sweeps to measure real image-only drift
+- [ ] Hybrid tracker: marker pose as anchor, image-based estimate bridges camera dropouts; define hand-off rule, test with simulated dropouts on TUS-REC
+- [ ] Run public DualTrack on these sweeps to measure real image-only drift (feeds both the hybrid bridge and the tolerance paper)
