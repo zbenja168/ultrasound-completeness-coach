@@ -4,3 +4,5 @@ outputs/
 __pycache__/
 *.pyc
 .pytest_cache/
+third_party/
+.venv-dualtrack/
