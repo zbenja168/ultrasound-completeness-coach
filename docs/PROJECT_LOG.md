@@ -34,7 +34,9 @@ organ itself (forearm stands in for thyroid).
 | Research report | 5,000-word sourced feasibility report | `reports/Guided 3D ultrasound mapping feasibility.md` |
 | Research notes | Five source-note files | `research_notes/Guided 3D ultrasound mapping feasibility/` |
 | Engine | `data.py`, `coverage.py`, `score.py`, `noise.py`, `viz.py`, plus Stage 1: `confidence.py`, `roi.py`, `tracker.py`, `live.py` | `src/uscov/` |
-| Scripts | inspect, run coverage, noise sweep, confidence compare, hybrid sweep, live demo | `scripts/` |
+| Scripts | inspect, run coverage, noise sweep, confidence compare, hybrid sweep, live demo, make markers, calibrate camera, track cube | `scripts/` |
+| Bench-day runbook | Before/on/after the lab session, kit list, pass criteria | `docs/BENCH_DAY.md` |
+| Printable markers | Six cube markers (35 mm) + calibration chessboard | `docs/print/markers_35mm.pdf` |
 | Tests | 13 unit tests | `tests/test_engine.py`, `tests/test_stage1.py`, `tests/test_live.py` |
 | Raw data | TUS-REC 2024 val (4.8 GB), 2025 val (1.2 GB), CC BY-NC-SA | `data/raw/` (local only, see README for links) |
 | Extracted data | 78 scans as HDF5, 13 GB | `data/extracted/` (local only) |
@@ -49,6 +51,7 @@ organ itself (forearm stands in for thyroid).
 
 | Date | Event |
 | --- | --- |
+| 2026-10-10 | Bench-day prep: printable marker + chessboard sheet (`docs/print/markers_35mm.pdf`), camera calibration script (verified on synthetic views to ~1 px), home jitter test for the marker cube, step-by-step runbook `docs/BENCH_DAY.md` |
 | 2026-10-09 | Stage 1 software built and tested (13 tests): ray-based shadow confidence (now default), named region templates (thyroid, sweep-thirds), hybrid marker/image tracker, ArUco cube tracker + capture/replay sources, end-to-end replay demo. Hybrid sweep: bridging keeps completeness 0.97 through 5 s camera dropouts vs 0.58 when frames are dropped. Marker rig rules: camera <30 cm, markers >=30-40 mm, two faces visible |
 | 2026-10-09 | Decision: hybrid tracking. Marker cube (camera) is the primary pose source; image-based tracking bridges camera dropouts. Not competing with published sensorless methods; the tracking contribution is the tolerance question. Engineering partner invited to repo |
 | 2026-10-09 | Hardware settled: the school's GE machine is a cart with a video output port; department has approved plugging a capture card into it. Stage 1 frame access = capture card, no handheld workaround needed |
