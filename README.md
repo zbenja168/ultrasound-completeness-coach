@@ -109,3 +109,31 @@ So: camera within ~30 cm, markers >= 30-40 mm, cube oriented so two faces are vi
 
 Still open for the bench: spatial calibration (image <-> cube) and temporal alignment come from PLUS fCal on the day;
 the ray model's thresholds are to be calibrated against the phantom; the thyroid template needs a registration step (Stage 2).
+
+## Measured image-only tracking: DualTrack (2026-10-10)
+
+The published DualTrack model (ImFusion + Queen's, TUS-REC 2025 winner; CC BY-NC-SA 4.0; code in `third_party/`,
+not in this repo) was run on our sweeps with the authors' preprocessing (`scripts/run_dualtrack.py`, separate env
+`.venv-dualtrack`, RTX 3060 Ti). Predicted poses were fed into the coverage engine (`scripts/dualtrack_coverage.py`).
+
+Trajectory error on all 72 forearm validation sweeps (2024 model): median final drift 6.8 mm (4.0% of a 170 mm path),
+mean error 3.7 mm, worst sweep 33 mm; straight 5.8, C 6.6, S 7.5 mm. Rotation sweeps (2025 model, 6 sweeps, ~380 mm
+paths): median final drift 9.5 mm (2.5%).
+
+Coverage-map faithfulness with measured poses (medians; reference = map from optical-tracker poses):
+
+| pose source | sweeps | completeness | false coverage | false gap | Dice |
+| --- | --- | ---: | ---: | ---: | ---: |
+| DualTrack only, forearm | 24 | 0.886 | 7.5% | 11.4% | 0.906 |
+| DualTrack only, rotation | 6 | 0.820 | 17.6% | 18.0% | 0.833 |
+| Hybrid (marker + DualTrack bridging 3 x 100-frame dropouts), forearm | 24 | 0.952 | 6.6% | 4.8% | 0.943 |
+| Hybrid, rotation | 6 | 0.962 | 10.3% | 3.8% | 0.931 |
+
+Findings: the measured image-only row matches the Stage 0 simulation on straight/curved sweeps (simulated Dice 0.92,
+measured 0.91), so the simulation was realistic. On twist-and-tilt sweeps image-only maps degrade (Dice 0.83) and are
+not good enough alone. Anchoring with the marker and bridging gaps with DualTrack keeps the map at Dice 0.93-0.94.
+
+Caveats: these are the dataset's validation sweeps, likely used by the authors for model selection (not training),
+so errors may be slightly optimistic. On the ~450-frame forearm sweeps three 100-frame dropouts make two-thirds of
+frames bridged, so the forearm hybrid row is mostly DualTrack anchored at intervals by the marker. Marker poses are
+still simulated; the bench day replaces them with measured ones.

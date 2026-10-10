@@ -35,6 +35,7 @@ organ itself (forearm stands in for thyroid).
 | Research notes | Five source-note files | `research_notes/Guided 3D ultrasound mapping feasibility/` |
 | Engine | `data.py`, `coverage.py`, `score.py`, `noise.py`, `viz.py`, plus Stage 1: `confidence.py`, `roi.py`, `tracker.py`, `live.py` | `src/uscov/` |
 | Scripts | inspect, run coverage, noise sweep, confidence compare, hybrid sweep, live demo, make markers, calibrate camera, track cube | `scripts/` |
+| DualTrack results | Predicted poses per sweep, coverage comparison CSVs | `outputs/dualtrack_2024/`, `outputs/dualtrack_2025/`, `outputs/dualtrack_cov_2024/`, `outputs/dualtrack_cov_2025/` (local only); code + weights in `third_party/` (local only, CC BY-NC-SA) |
 | Bench-day runbook | Before/on/after the lab session, kit list, pass criteria | `docs/BENCH_DAY.md` |
 | Printable markers | Six cube markers (35 mm) + calibration chessboard | `docs/print/markers_35mm.pdf` |
 | Tests | 13 unit tests | `tests/test_engine.py`, `tests/test_stage1.py`, `tests/test_live.py` |
@@ -51,6 +52,7 @@ organ itself (forearm stands in for thyroid).
 
 | Date | Event |
 | --- | --- |
+| 2026-10-10 | Ran published DualTrack image-only model on all 72 forearm + 6 rotation sweeps: median drift 6.8 mm (4.0%) forearm, 9.5 mm (2.5%) rotation. Coverage from measured poses: Dice 0.91 forearm, 0.83 rotation alone; hybrid marker + DualTrack 0.93-0.94. Measured row matches Stage 0 simulation. First attempt was stopped by low system memory and rerun after apps were closed |
 | 2026-10-10 | Bench-day prep: printable marker + chessboard sheet (`docs/print/markers_35mm.pdf`), camera calibration script (verified on synthetic views to ~1 px), home jitter test for the marker cube, step-by-step runbook `docs/BENCH_DAY.md` |
 | 2026-10-09 | Stage 1 software built and tested (13 tests): ray-based shadow confidence (now default), named region templates (thyroid, sweep-thirds), hybrid marker/image tracker, ArUco cube tracker + capture/replay sources, end-to-end replay demo. Hybrid sweep: bridging keeps completeness 0.97 through 5 s camera dropouts vs 0.58 when frames are dropped. Marker rig rules: camera <30 cm, markers >=30-40 mm, two faces visible |
 | 2026-10-09 | Decision: hybrid tracking. Marker cube (camera) is the primary pose source; image-based tracking bridges camera dropouts. Not competing with published sensorless methods; the tracking contribution is the tolerance question. Engineering partner invited to repo |
@@ -86,4 +88,4 @@ organ itself (forearm stands in for thyroid).
 - [x] Faculty sponsor (colorectal surgeon) and engineering partner secured 2026-10-09; next: brief both, agree IRB timeline
 - [ ] Apply for ImFusion academic SDK
 - [x] Hybrid tracker built and tested 2026-10-09: bridging holds through 5 s dropouts
-- [ ] Run public DualTrack on these sweeps to measure real image-only drift (feeds both the hybrid bridge and the tolerance paper)
+- [x] DualTrack run on all sweeps 2026-10-10; measured results in README
