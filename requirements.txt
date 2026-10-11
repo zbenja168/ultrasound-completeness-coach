@@ -4,3 +4,4 @@ h5py
 matplotlib
 tqdm
 pytest
+opencv-contrib-python

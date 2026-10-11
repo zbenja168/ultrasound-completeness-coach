@@ -31,6 +31,7 @@ transform, pinhead calibration).
 - `src/uscov/score.py`     completeness score and "thin region" finder
 - `src/uscov/noise.py`     pose corruption models (drift, jitter, bias)
 - `src/uscov/viz.py`       plots and fill-in animation
+- `src/uscov/bench.py`     bench recordings, pinhead calibration, lag estimate, known-distance check
 - `scripts/`               runnable entry points
 - `tests/`                 unit tests for transforms and coverage
 
@@ -107,8 +108,14 @@ constant-velocity extrapolation is useless beyond a second. Simply dropping untr
 at 25 cm it is ~2 mm; a 40 mm marker at 40 cm ~3.5 mm. Two visible faces resolve the ambiguity (sub-mm with exact corners).
 So: camera within ~30 cm, markers >= 30-40 mm, cube oriented so two faces are visible, sub-pixel corner refinement on.
 
-Still open for the bench: spatial calibration (image <-> cube) and temporal alignment come from PLUS fCal on the day;
-the ray model's thresholds are to be calibrated against the phantom; the thyroid template needs a registration step (Stage 2).
+Bench-day tooling (2026-10-11, tested on synthetic data): `scripts/record_bench.py` records capture-card frames and
+cube poses on one clock; `scripts/pick_crop.py` sets the image crop and mm per pixel from the on-screen ruler;
+`scripts/calibrate_pinhead.py` solves the image-to-cube transform from a pinhead take (9 unknowns, several starts;
+synthetic recovery within 3 mm under 1 px click and 0.4 mm / 0.3 deg pose noise); `scripts/estimate_lag.py` cross-correlates
+probe speed with image motion from a jiggle take; `scripts/known_distance.py` turns a ruler-slide take into the measured
+accuracy row. `uscov.bench.recording_to_scan` feeds a take into the engine unchanged. Runbook: `docs/BENCH_DAY.md`.
+Still open: the ray model's thresholds are to be calibrated against the phantom; the thyroid template needs a
+registration step (Stage 2).
 
 ## Measured image-only tracking: DualTrack (2026-10-10)
 

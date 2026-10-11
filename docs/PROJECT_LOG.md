@@ -38,8 +38,9 @@ organ itself (forearm stands in for thyroid).
 | DualTrack results | Predicted poses per sweep, coverage comparison CSVs | `outputs/dualtrack_2024/`, `outputs/dualtrack_2025/`, `outputs/dualtrack_cov_2024/`, `outputs/dualtrack_cov_2025/` (local only); code + weights in `third_party/` (local only, CC BY-NC-SA) |
 | Bench-day runbook | Before/on/after the lab session, kit list, pass criteria | `docs/BENCH_DAY.md` |
 | Overview sketch | One-page figure for emails and slides (setup, map, output, scope statement) | `docs/figures/overview_sketch.png`; script `scripts/make_overview_figure.py` |
+| Bench tooling | Recorder, crop/scale picker, pinhead calibration, lag estimator, known-distance check; recording format and pairing code; 9 tests | `src/uscov/bench.py`; `scripts/record_bench.py`, `pick_crop.py`, `calibrate_pinhead.py`, `estimate_lag.py`, `known_distance.py`; `tests/test_bench.py` |
 | Printable markers | Six cube markers (35 mm) + calibration chessboard | `docs/print/markers_35mm.pdf` |
-| Tests | 13 unit tests | `tests/test_engine.py`, `tests/test_stage1.py`, `tests/test_live.py` |
+| Tests | 22 unit tests | `tests/test_engine.py`, `tests/test_stage1.py`, `tests/test_live.py`, `tests/test_bench.py` |
 | Raw data | TUS-REC 2024 val (4.8 GB), 2025 val (1.2 GB), CC BY-NC-SA | `data/raw/` (local only, see README for links) |
 | Extracted data | 78 scans as HDF5, 13 GB | `data/extracted/` (local only) |
 | Coverage outputs | projections + fill GIFs | `outputs/coverage/`, `outputs/coverage_2024/` (local only) |
@@ -53,6 +54,7 @@ organ itself (forearm stands in for thyroid).
 
 | Date | Event |
 | --- | --- |
+| 2026-10-11 | Bench-day tooling built and tested on synthetic data (9 new tests, 22 total): recorder for capture-card frames + cube poses on one clock (`scripts/record_bench.py`, HDF5 + npz + raw webcam video per take), screen crop and scale picker (`pick_crop.py`), pinhead image-to-cube calibration solver (`calibrate_pinhead.py`, recovers the transform within 3 mm under realistic click and pose noise), jiggle-test lag estimator (`estimate_lag.py`), known-distance accuracy check (`known_distance.py`). `uscov.bench.recording_to_scan` turns a take into a Scan for the engine. Runbook rewritten so every step names its script and pass value |
 | 2026-10-11 | One-page overview sketch for outreach emails (`docs/figures/overview_sketch.png`, regenerate with `scripts/make_overview_figure.py`): room setup, coverage map, student/instructor view, and the not-diagnostic statement. Drafted the access-request email to the ultrasound lead and the pre-bench-day task list for the engineer |
 | 2026-10-10 | Simulator: probe tilt added (slider, A / D keys, Shift + scroll; up to 35 degrees). The beam fans under the skin from the probe face, the coverage map paints the tilted slice, and tracker noise and drift include tilt |
 | 2026-10-10 | Interactive teaching simulator (`sim/coverage_simulator.html`, published privately at https://claude.ai/artifact/SmwGZaRm5BG5KuQrK1kMNU): cursor acts as the probe on a simulated neck with a synthetic B-mode image (trachea and bone shadow, vessels), thyroid coverage map with 5 named parts, depth setting, and switchable trackers (perfect, raw cube, smoothed cube, cube + image model, image only) with a block-camera control and live map-correct / false-coverage readouts. Anatomy and noise are approximate |
