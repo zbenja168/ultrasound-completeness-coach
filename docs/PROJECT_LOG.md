@@ -37,6 +37,7 @@ organ itself (forearm stands in for thyroid).
 | Scripts | inspect, run coverage, noise sweep, confidence compare, hybrid sweep, live demo, make markers, calibrate camera, track cube | `scripts/` |
 | DualTrack results | Predicted poses per sweep, coverage comparison CSVs | `outputs/dualtrack_2024/`, `outputs/dualtrack_2025/`, `outputs/dualtrack_cov_2024/`, `outputs/dualtrack_cov_2025/` (local only); code + weights in `third_party/` (local only, CC BY-NC-SA) |
 | Bench-day runbook | Before/on/after the lab session, kit list, pass criteria | `docs/BENCH_DAY.md` |
+| Overview sketch | One-page figure for emails and slides (setup, map, output, scope statement) | `docs/figures/overview_sketch.png`; script `scripts/make_overview_figure.py` |
 | Printable markers | Six cube markers (35 mm) + calibration chessboard | `docs/print/markers_35mm.pdf` |
 | Tests | 13 unit tests | `tests/test_engine.py`, `tests/test_stage1.py`, `tests/test_live.py` |
 | Raw data | TUS-REC 2024 val (4.8 GB), 2025 val (1.2 GB), CC BY-NC-SA | `data/raw/` (local only, see README for links) |
@@ -52,6 +53,7 @@ organ itself (forearm stands in for thyroid).
 
 | Date | Event |
 | --- | --- |
+| 2026-10-11 | One-page overview sketch for outreach emails (`docs/figures/overview_sketch.png`, regenerate with `scripts/make_overview_figure.py`): room setup, coverage map, student/instructor view, and the not-diagnostic statement. Drafted the access-request email to the ultrasound lead and the pre-bench-day task list for the engineer |
 | 2026-10-10 | Simulator: probe tilt added (slider, A / D keys, Shift + scroll; up to 35 degrees). The beam fans under the skin from the probe face, the coverage map paints the tilted slice, and tracker noise and drift include tilt |
 | 2026-10-10 | Interactive teaching simulator (`sim/coverage_simulator.html`, published privately at https://claude.ai/artifact/SmwGZaRm5BG5KuQrK1kMNU): cursor acts as the probe on a simulated neck with a synthetic B-mode image (trachea and bone shadow, vessels), thyroid coverage map with 5 named parts, depth setting, and switchable trackers (perfect, raw cube, smoothed cube, cube + image model, image only) with a block-camera control and live map-correct / false-coverage readouts. Anatomy and noise are approximate |
 | 2026-10-10 | Ran published DualTrack image-only model on all 72 forearm + 6 rotation sweeps: median drift 6.8 mm (4.0%) forearm, 9.5 mm (2.5%) rotation. Coverage from measured poses: Dice 0.91 forearm, 0.83 rotation alone; hybrid marker + DualTrack 0.93-0.94. Measured row matches Stage 0 simulation. First attempt was stopped by low system memory and rerun after apps were closed |
