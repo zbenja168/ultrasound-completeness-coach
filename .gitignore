@@ -6,3 +6,4 @@ __pycache__/
 .pytest_cache/
 third_party/
 .venv-dualtrack/
+sim_public/
