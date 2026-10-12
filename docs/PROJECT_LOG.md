@@ -39,6 +39,7 @@ organ itself (forearm stands in for thyroid).
 | Bench-day runbook | Before/on/after the lab session, kit list, pass criteria | `docs/BENCH_DAY.md` |
 | Overview sketch | One-page figure for emails and slides (setup, map, output, scope statement) | `docs/figures/overview_sketch.png`; script `scripts/make_overview_figure.py` |
 | Bench tooling | Recorder, crop/scale picker, pinhead calibration, lag estimator, known-distance check; recording format and pairing code; 9 tests | `src/uscov/bench.py`; `scripts/record_bench.py`, `pick_crop.py`, `calibrate_pinhead.py`, `estimate_lag.py`, `known_distance.py`; `tests/test_bench.py` |
+| Coverage coach simulator | Browser demo: scan a simulated neck with the cursor and watch the thyroid coverage map fill; compare tracker types | public page https://zbenja168.github.io/coverage-coach-simulator/ (repo `zbenja168/coverage-coach-simulator`); private copy https://claude.ai/artifact/SmwGZaRm5BG5KuQrK1kMNU; source `sim/coverage_simulator.html` |
 | Printable markers | Six cube markers (35 mm) + calibration chessboard | `docs/print/markers_35mm.pdf` |
 | Tests | 22 unit tests | `tests/test_engine.py`, `tests/test_stage1.py`, `tests/test_live.py`, `tests/test_bench.py` |
 | Raw data | TUS-REC 2024 val (4.8 GB), 2025 val (1.2 GB), CC BY-NC-SA | `data/raw/` (local only, see README for links) |
