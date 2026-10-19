@@ -22,11 +22,22 @@ Every step below has a script. Each script prints what "good" looks like for its
 6. Dry-run the recorder with no ultrasound: any video file stands in for the capture card.
    `python scripts/record_bench.py --us-device some_video.mp4 --cam-device 0 --camera outputs/camera.json --out data/dryrun --name test`,
    press R to start and R to stop, Q to quit. The take folder should hold `frames.h5`, `poses.npz`, `cam.avi`, `meta.json`.
-7. Buy or borrow a USB capture card matching the cart's video port (HDMI, DVI or VGA plus adapter).
+7. Buy or borrow a USB capture card for the machine's video port (the Venue Go lists an HDMI output; confirm from the reference PDF).
+
+## The machine: GE Venue Go
+
+Confirmed 2026-10-19 by the ultrasound lead (software version to follow). What matters for us:
+
+- Portable point-of-care system, 15.6-inch touchscreen, on a stand. Reseller spec listings give it an HDMI
+  output port plus USB 3.0 and Ethernet; confirm the port and its location from the reference PDF he attached
+  before buying the capture card (HDMI capture card is the likely answer).
+- The small-parts probe for a thyroid is the L4-12t-RS linear array: 38 mm field of view (the simulator's probe
+  width), 3.4-12.6 MHz, buttons on the handle. The cube bracket must leave the buttons and the cable exit free.
+- The screen layout (image region, depth ruler) is read on the day by `pick_crop.py`; nothing is hard-coded to it.
 
 ## Kit list
 
-GE cart, capture card + cable, laptop with this repo and `.venv`, webcam on a tripod or clamp, marker cube on probe,
+GE Venue Go, HDMI capture card + cable, laptop with this repo and `.venv`, webcam on a tripod or clamp, marker cube on probe,
 phantom (thyroid or any gel phantom with known inserts), a pin or bead on a thread in a water bath (for calibration),
 ruler or a rail for known-distance slides, gel, tape.
 
