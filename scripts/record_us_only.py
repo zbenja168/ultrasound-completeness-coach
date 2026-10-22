@@ -33,6 +33,31 @@ def next_take_dir(out: str, name: str) -> str:
     return d
 
 
+def open_source(src):
+    """Open a camera index with whichever Windows backend works (DirectShow, Media Foundation, default)."""
+    if not isinstance(src, int):
+        cap = cv2.VideoCapture(src)
+        ok, frame = cap.read()
+        if not ok:
+            raise SystemExit(f"could not read from {src!r}")
+        return cap, frame
+    backends = [("MSMF", cv2.CAP_MSMF), ("DSHOW", cv2.CAP_DSHOW), ("default", cv2.CAP_ANY)] if os.name == "nt" else [("default", cv2.CAP_ANY)]
+    for name, be in backends:
+        cap = cv2.VideoCapture(src, be)
+        if not cap.isOpened():
+            cap.release()
+            continue
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+        ok, frame = cap.read()
+        if ok:
+            print(f"opened device {src} via {name}")
+            return cap, frame
+        cap.release()
+    raise SystemExit(f"could not open camera index {src} with any backend. Run the device check: "
+                     "python -c \"import cv2; [print(i, cv2.VideoCapture(i).read()[0]) for i in range(4)]\"")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--us-device", required=True, help="capture card index (e.g. 1) or a video file for a dry run")
@@ -44,15 +69,7 @@ def main() -> None:
     a = ap.parse_args()
 
     src = int(a.us_device) if str(a.us_device).isdigit() else a.us_device
-    cap = cv2.VideoCapture(src, cv2.CAP_DSHOW) if isinstance(src, int) and os.name == "nt" else cv2.VideoCapture(src)
-    if not cap.isOpened():
-        raise SystemExit(f"could not open ultrasound source {a.us_device!r}")
-    if isinstance(src, int):
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-    ok, frame = cap.read()
-    if not ok:
-        raise SystemExit("source opened but gave no frame; check the HDMI cable and that the cart is not frozen on a menu")
+    cap, frame = open_source(src)
     h, w = frame.shape[:2]
     src_fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
 
