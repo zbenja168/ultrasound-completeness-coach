@@ -74,6 +74,27 @@ for the whole session; any change means redoing steps 1 and 3.
    `outputs/screen.json`, `outputs/image_to_tool.json` and `outputs/lag.json` into it, and add a `notes.txt`
    (cart model, probe, depth, anything odd). Raw recordings are worth more than any live demo.
 
+## No webcam? Phone-camera fallback (used 2026-10-22)
+
+If no USB webcam can be attached to the laptop (school network blocked the phone-webcam installer), the probe camera
+is the phone itself, recording ordinary video, and the laptop records only the ultrasound. Everything else moves
+to after the session.
+
+1. **Phone on the tripod**, lens 25-30 cm from the scanning spot, looking down at ~45 degrees so two cube faces
+   show. 1080p, highest frame rate offered, focus and exposure locked if the camera app allows. Plug it into
+   power. Nobody touches the tripod between takes.
+2. **Calibration clip first**: film the printed checkerboard for ~30 s while moving and tilting it around the
+   view. Later: extract frames and run `calibrate_camera.py --images <folder>`.
+3. **Each take**: start the phone video, start
+   `python scripts/record_us_only.py --us-device <camlink index> --out data/bench_DATE --name <take>`,
+   then tap the probe sharply on the phantom three times. The taps sync the two recordings. Q stops the laptop
+   side; stop the phone after. Same take names as above: practice, pinhead, jiggle, slide, full, partial, blocked.
+4. **Screen crop** can be picked afterwards: `pick_crop.py --device data/bench_DATE/full_01/us.avi ...`.
+5. **Copy the phone videos** into the take folders (`phone.mp4`) before leaving, or at least the same day.
+
+After the day: track the cube in `phone.mp4` with the calibrated intrinsics, cross-correlate the tap jolts to
+find the offset to `us_times.csv`, then continue with `recording_to_scan` as for a webcam take.
+
 ## After the day (Claude)
 
 `recording_to_scan` in `src/uscov/bench.py` turns a take plus `image_to_tool.json` and the lag into a Scan the engine
