@@ -14,10 +14,13 @@ import cv2
 
 def find_corners(gray, pattern):
     ok, corners = cv2.findChessboardCorners(gray, pattern, cv2.CALIB_CB_ADAPTIVE_THRESH | cv2.CALIB_CB_NORMALIZE_IMAGE)
-    if not ok:
-        return None
-    return cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1),
-                            (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-3))
+    if ok:
+        return cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1),
+                                (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-3))
+    # The sector-based finder copes with a board that is clipped at the page edge (a partial extra column
+    # confuses the classic finder); it returns sub-pixel corners already.
+    ok, corners = cv2.findChessboardCornersSB(gray, pattern, cv2.CALIB_CB_NORMALIZE_IMAGE)
+    return corners if ok else None
 
 
 def calibrate(grays, pattern, square_mm):

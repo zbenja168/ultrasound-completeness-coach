@@ -95,6 +95,38 @@ to after the session.
 After the day: track the cube in `phone.mp4` with the calibrated intrinsics, cross-correlate the tap jolts to
 find the offset to `us_times.csv`, then continue with `recording_to_scan` as for a webcam take.
 
+## Lessons from 2026-10-22 (read before the next session)
+
+What the recordings showed once they were processed:
+
+1. **Markers need a white margin.** The cube faces were cut flush with the black marker border, and the cube body
+   is black. Wherever the border touches the body the detector cannot close the square, so the top face was
+   recognised in only 23-54 % of frames. Print each marker with a white margin of at least one bit (8 mm for a
+   35 mm marker) and build or paint the cube white.
+2. **Keep fingers off the cube.** The scanning hand covered one edge of the top face in most sweep frames. Mount
+   the cube on a short stalk above the probe, away from the grip, or hold the probe lower.
+3. **Phone distance.** The phone sat about 75 cm from the probe (markers about 100 px wide at 1080p). Lateral
+   position noise was a few millimetres, depth noise about 35 mm. At 25-30 cm the markers are 3x larger and the
+   depth noise falls accordingly.
+4. **Only the top face is ever seen** from a phone looking straight down, and one square gives two mirror-image
+   tilt solutions. The tracker now keeps the solution closest to the previous frame (pose_continuous), but a
+   camera at 45 degrees that sees two faces is still the real fix.
+5. **The printed chessboard was clipped** at the page edge, so calibration used 8x6 inner corners, not 9x6
+   (calibrate_camera.py now falls back to the sector-based finder, which copes with that). Hold the board at
+   varied tilts, not flat on the table; the flat-only views gave an ill-conditioned fit.
+6. **Clock sync without the cube**: the three taps are visible as whole-frame motion in the phone video and as
+   image motion on the ultrasound, so phone_to_bench.py correlates those two signals, searching +-3 s around the
+   offset predicted from the file names (phone clock was 1.3 s behind the laptop clock that day). The marker does
+   not have to be visible during the taps.
+7. **Write notes.txt before leaving**: which take is the keeper, the slide reference and its distances, the
+   cube-to-probe-face distance, and photos of the cube on the probe. None of this was in the 2026-10-22 upload.
+
+Processing chain for a phone-camera session:
+
+    python scripts/calibrate_camera.py --images <chessboard frames> --board 8x6 --square-mm 25 --out data/bench_DATE/phone_camera.json
+    python scripts/phone_to_bench.py data/bench_DATE/us/<take> --phone data/bench_DATE/phone/<clip>.mp4         --camera data/bench_DATE/phone_camera.json --screen data/bench_DATE/screen.json
+    python scripts/bench_coverage.py data/bench_DATE/us/full_01 --takes data/bench_DATE/us/partial_01 ... --face-mm <measured>
+
 ## After the day (Claude)
 
 `recording_to_scan` in `src/uscov/bench.py` turns a take plus `image_to_tool.json` and the lag into a Scan the engine

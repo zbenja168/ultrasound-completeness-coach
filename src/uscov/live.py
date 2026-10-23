@@ -125,22 +125,75 @@ class ArucoCubeTracker:
         self.board = self.cube.board(cv2)
         params = cv2.aruco.DetectorParameters()
         params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX  # sub-pixel corners: pose error scales with this
+        # Markers that span ~100 px (phone at 1080p, cube 30-80 cm away) break the default adaptive threshold,
+        # whose largest window is 23 px: the marker interior thresholds to noise. Larger windows fix that.
+        params.adaptiveThreshWinSizeMax = 103
+        params.adaptiveThreshWinSizeStep = 20
+        params.polygonalApproxAccuracyRate = 0.08
         self.detector = cv2.aruco.ArucoDetector(self.board.getDictionary(), params)
+        self.last_corners = ()
 
     def detect(self, gray: np.ndarray):
         corners, ids, _ = self.detector.detectMarkers(gray)
+        self.last_corners = corners
         return corners, ids
+
+    def marker_centre(self) -> np.ndarray | None:
+        """Mean pixel position of the markers found by the last detect(), or None."""
+        if not len(self.last_corners):
+            return None
+        return np.concatenate([c.reshape(-1, 2) for c in self.last_corners]).mean(axis=0)
+
+    def pose_continuous(self, gray: np.ndarray, prev: np.ndarray | None = None) -> tuple[np.ndarray | None, int]:
+        """pose() that resolves the single-marker flip: a lone square has two mirror-image tilt solutions, and the
+        iterative solver lands on either, which shows up as the pose jumping between frames. With one marker this
+        takes both planar (IPPE) solutions in front of the camera and keeps the one closest in rotation to `prev`
+        (the last accepted cube pose), or the lower reprojection error when there is no prev."""
+        corners, ids = self.detect(gray)
+        if ids is None or len(ids) == 0:
+            return None, 0
+        if len(ids) >= 2:
+            return self._board_pose(corners, ids)
+        obj, img = self.board.matchImagePoints(corners, ids)
+        if obj is None or len(obj) < 4:
+            return None, 0
+        try:
+            n, rvecs, tvecs, errs = self.cv2.solvePnPGeneric(obj, img, self.K, self.dist, flags=self.cv2.SOLVEPNP_IPPE)
+        except self.cv2.error:
+            return self._board_pose(corners, ids)
+        cands = []
+        for rv, tv, e in zip(rvecs, tvecs, np.asarray(errs).ravel()):
+            if tv.ravel()[2] <= 0:
+                continue
+            Rm, _ = self.cv2.Rodrigues(rv)
+            T = np.eye(4)
+            T[:3, :3] = Rm
+            T[:3, 3] = tv.ravel()
+            cands.append((T, float(e)))
+        if not cands:
+            return None, 0
+        if prev is not None and not np.any(np.isnan(prev)):
+            def dang(T):
+                c = (np.trace(prev[:3, :3].T @ T[:3, :3]) - 1) / 2
+                return float(np.arccos(np.clip(c, -1, 1)))
+            cands.sort(key=lambda c: dang(c[0]))
+        else:
+            cands.sort(key=lambda c: c[1])
+        return cands[0][0], 1
 
     def pose(self, gray: np.ndarray) -> tuple[np.ndarray | None, int]:
         """Returns (4x4 cube->camera or None, number of markers used)."""
         corners, ids = self.detect(gray)
         if ids is None or len(ids) == 0:
             return None, 0
+        return self._board_pose(corners, ids)
+
+    def _board_pose(self, corners, ids) -> tuple[np.ndarray | None, int]:
         obj, img = self.board.matchImagePoints(corners, ids)
         if obj is None or len(obj) < 4:
             return None, 0
         ok, rvec, tvec = self.cv2.solvePnP(obj, img, self.K, self.dist, flags=self.cv2.SOLVEPNP_ITERATIVE)
-        if not ok:
+        if not ok or tvec.ravel()[2] <= 0:   # behind the camera: a degenerate solution, not a pose
             return None, 0
         R, _ = self.cv2.Rodrigues(rvec)
         T = np.eye(4)
