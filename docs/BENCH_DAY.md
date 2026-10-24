@@ -9,12 +9,15 @@ Every step below has a script. Each script prints what "good" looks like for its
 
 1. Set up the code: clone the repo, `python -m venv .venv`, `.venv\Scripts\pip install -r requirements.txt`,
    then `.venv\Scripts\python -m pytest` (22 tests should pass).
-2. Print `docs/print/markers_35mm.pdf` at 100% / actual size. Measure one marker with a ruler (should be 35 mm).
-   Regenerate at another size with `python scripts/make_markers.py --marker-mm 40`.
-3. Build the cube: rigid block with edge >= 43 mm, one marker per face, flat and matte, ids matching the labels.
-   Bracket it to the probe handle so it cannot shift (3D-printed clip preferred). Two faces should face the camera
-   in the usual scanning grip.
-4. Camera intrinsics: tape page 2 (chessboard) flat to a board, then
+2. Print `docs/print/markers_35mm.pdf` (face 51 mm) or `docs/print/markers_30mm.pdf` (face 46 mm) at 100% /
+   actual size. Measure one marker with a ruler (35 or 30 mm). Cut on the grey dashed line and keep the white
+   margin: a marker cut flush and glued to a dark cube is not detected where its border meets the body (2026-10-22).
+   Regenerate at another size with `python scripts/make_markers.py --marker-mm 40 --out docs/print/markers_40mm.pdf`.
+3. Build the cube: WHITE rigid block (3D-printed or painted) with edge >= the face size on the sheet, one marker
+   per face centred, flat and matte, ids matching the labels. Mount it on a short stalk (5-8 cm) above the probe
+   body, clear of the fingers, with a clip so it cannot shift. Two faces should face the camera in the usual
+   scanning grip, which means the camera sits at about 45 degrees, not straight above.
+4. Camera intrinsics: tape page 2 (chessboard; the sheet states the printed square size and corner count) flat to a board, then
    `python scripts/calibrate_camera.py --device 0 --out outputs/camera.json` and grab ~15 varied views.
    Good result: reprojection RMS < 0.5 px. Keep the same camera and resolution on the day; do not change zoom/focus.
 5. Jitter test: `python scripts/track_cube.py --camera outputs/camera.json --marker-mm 35`, cube still on a table at
