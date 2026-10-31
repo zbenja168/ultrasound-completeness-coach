@@ -12,7 +12,7 @@ Tracking works. The cube pose was recovered in 87-97 % of frames in the slide an
 2026-10-22), two faces were seen in 30-60 % of frames, and the probe held still at a mark moves by 0.2-0.5 mm
 per axis in the track (35 mm on 2026-10-22). The first coverage maps from real frames look like sweeps, and the
 first operator-to-operator comparison exists. The known-distance test against the chessboard squares used as the ruler gives a mean absolute error of 2.3 mm over four moves of 38-95 mm. The weak link is now the clock alignment between phone and laptop
-(about +-0.3 s on the good takes, +-1.5 s on three takes), and the cube-to-probe-face distance is still an assumption.
+(about +-0.3 s on the good takes, +-1.5 s on three takes), and the cube-to-probe-face distance is a 120 mm estimate by decision.
 
 ## What worked
 
@@ -63,7 +63,8 @@ first operator-to-operator comparison exists. The known-distance test against th
 
 ## Still open
 
-1. Cube centre to probe face (mm). The maps use 120 mm; the photos show the cube loose, not mounted.
+1. Cube centre to probe face: kept at the 120 mm estimate (decision 2026-10-31). It shifts every map equally along the
+   probe axis, so completeness and operator comparisons are unaffected; only the absolute depth placement is approximate.
 2. sweep_01 and freestyle_01 have no phone clip; no notes.txt was written.
 
 Figures: `docs/figures/bench_2026-10-30/` (tracked_fraction.png, slide_traces.png, marker_detections.jpg, cube_photo.jpg, the
