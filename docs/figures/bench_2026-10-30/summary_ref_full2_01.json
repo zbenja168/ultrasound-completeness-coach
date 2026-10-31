@@ -1,0 +1,88 @@
+{
+  "reference": "full2_01",
+  "voxel_mm": 3.0,
+  "face_mm": 120.0,
+  "lateral": [
+    1.0,
+    0.0,
+    0.0
+  ],
+  "roi_voxels": 102077,
+  "rows": [
+    {
+      "take": "full2_01",
+      "role": "reference",
+      "completeness": 1.0,
+      "mean_conf": 0.7890317440032959,
+      "frames": 1444,
+      "primary": 1402,
+      "bridged": 11,
+      "unknown": 31
+    },
+    {
+      "take": "partial_02",
+      "role": "candidate",
+      "completeness": 0.43868844107879346,
+      "mean_conf": 0.3594170808792114,
+      "false_coverage": 0.09657635120140416,
+      "false_gap": 0.5613115589212065,
+      "dice": 0.5905937590672892,
+      "frames": 318,
+      "primary": 252,
+      "bridged": 0,
+      "unknown": 66
+    },
+    {
+      "take": "blocked2_01",
+      "role": "candidate",
+      "completeness": 0.47335834713010766,
+      "mean_conf": 0.3749053180217743,
+      "false_coverage": 0.25359923381117155,
+      "false_gap": 0.5266416528698923,
+      "dice": 0.5793193576040236,
+      "frames": 957,
+      "primary": 578,
+      "bridged": 10,
+      "unknown": 369
+    },
+    {
+      "take": "full_01",
+      "role": "candidate",
+      "completeness": 0.72898890053587,
+      "mean_conf": 0.6086796522140503,
+      "false_coverage": 0.34744900643667675,
+      "false_gap": 0.27101109946413005,
+      "dice": 0.6886553669179264,
+      "frames": 1804,
+      "primary": 1535,
+      "bridged": 20,
+      "unknown": 249
+    },
+    {
+      "take": "partial_01",
+      "role": "candidate",
+      "completeness": 0.40372463924292445,
+      "mean_conf": 0.33695733547210693,
+      "false_coverage": 0.26547962784728907,
+      "false_gap": 0.5962753607570755,
+      "dice": 0.521054727752034,
+      "frames": 482,
+      "primary": 255,
+      "bridged": 20,
+      "unknown": 207
+    },
+    {
+      "take": "blocked_01",
+      "role": "candidate",
+      "completeness": 0.4541473593463758,
+      "mean_conf": 0.4149376153945923,
+      "false_coverage": 0.4330128910740931,
+      "false_gap": 0.5458526406536243,
+      "dice": 0.5043325953687737,
+      "frames": 1018,
+      "primary": 423,
+      "bridged": 30,
+      "unknown": 565
+    }
+  ]
+}

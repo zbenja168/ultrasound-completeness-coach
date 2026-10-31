@@ -77,6 +77,61 @@ def read_us_times(take: Path) -> np.ndarray:
         return np.array([float(r["t_s"]) for r in csv.DictReader(f)])
 
 
+def mov_creation_local(path):
+    """Recording start of a QuickTime/MP4 file as local wall-clock time (naive datetime), or None.
+
+    Prefers the com.apple.quicktime.creationdate string (local time with zone, e.g. 2026-10-30T15:52:49-0500);
+    falls back to the mvhd creation time (UTC seconds since 1904) converted to this machine's local zone.
+    """
+    import re
+    import struct
+    from datetime import datetime, timedelta, timezone
+
+    def atoms(f, start, end):
+        pos = start
+        while pos + 8 <= end:
+            f.seek(pos)
+            hdr = f.read(8)
+            if len(hdr) < 8:
+                return
+            size, typ = struct.unpack(">I4s", hdr)
+            hs = 8
+            if size == 1:
+                size = struct.unpack(">Q", f.read(8))[0]
+                hs = 16
+            if size == 0:
+                size = end - pos
+            yield pos, size, typ, hs
+            pos += size
+
+    p = Path(path)
+    try:
+        with open(p, "rb") as f:
+            total = p.stat().st_size
+            mvhd = None
+            for pos, size, typ, hs in atoms(f, 0, total):
+                if typ != b"moov":
+                    continue
+                for pos2, size2, typ2, hs2 in atoms(f, pos + hs, pos + size):
+                    if typ2 == b"mvhd":
+                        f.seek(pos2 + hs2)
+                        v = f.read(1)[0]
+                        f.seek(pos2 + hs2 + 4)
+                        mvhd = struct.unpack(">Q" if v else ">I", f.read(8 if v else 4))[0]
+                    elif typ2 == b"meta":
+                        f.seek(pos2 + hs2)
+                        blob = f.read(min(size2 - hs2, 1 << 20))
+                        m = re.search(rb"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)[+-]\d{4}", blob)
+                        if m:
+                            return datetime.fromisoformat(m.group(1).decode())
+            if mvhd:
+                utc = datetime(1904, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=mvhd)
+                return utc.astimezone().replace(tzinfo=None)
+    except OSError:
+        return None
+    return None
+
+
 def predicted_offset(phone_path: str, take: Path, clock_delta: float) -> float | None:
     """Offset expected from the phone file name (YYYYMMDD_HHMMSS) and the take's start time in meta.json.
 
@@ -87,11 +142,99 @@ def predicted_offset(phone_path: str, take: Path, clock_delta: float) -> float |
     from datetime import datetime
     m = re.search(r"(\d{8})_(\d{6})", Path(phone_path).name)
     meta = json.load(open(take / "meta.json")) if (take / "meta.json").exists() else {}
-    if not m or "started" not in meta:
+    if "started" not in meta:
         return None
-    phone_start = datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M%S")
+    if m:
+        phone_start = datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M%S")
+    else:
+        phone_start = mov_creation_local(phone_path)   # iPhone .MOV: no time in the name, read the file header
+        if phone_start is None:
+            return None
     laptop_start = datetime.fromisoformat(meta["started"])
     return (phone_start - laptop_start).total_seconds() + clock_delta
+
+
+def smooth_signal(t, x, win_s):
+    """Moving average over win_s seconds; NaNs are bridged linearly first."""
+    x = np.asarray(x, float)
+    ok = np.isfinite(x)
+    if ok.sum() < 3:
+        return np.zeros_like(x)
+    xi = np.interp(t, t[ok], x[ok])
+    n = max(1, int(round(win_s / max(np.median(np.diff(t)), 1e-3))))
+    return np.convolve(xi, np.ones(n) / n, mode="same")
+
+
+def us_flow_y(frames):
+    """Signed vertical image shift between consecutive ultrasound frames (px), by phase correlation: contact
+    changes and tilts move the fan image up and down. Zero where the correlation is unreliable."""
+    import cv2
+    small = [cv2.resize(f, (250, 198)).astype(np.float32) for f in frames]
+    win = cv2.createHanningWindow((250, 198), cv2.CV_32F)
+    dy = np.zeros(len(frames))
+    for i in range(1, len(frames)):
+        (sx, sy), resp = cv2.phaseCorrelate(small[i - 1], small[i], win)
+        if resp > 0.05 and abs(sy) < 30:
+            dy[i] = sy
+    return dy
+
+
+def corr_curve(offs, grid, t, x, ft, us):
+    """Normalised cross-correlation of phone signal x(t) shifted by each offset against ultrasound signal us(ft)."""
+    b = np.interp(grid, ft, us)
+    b = b - b.mean()
+    nb = np.linalg.norm(b) or 1.0
+    ok = np.isfinite(x)
+    out = np.zeros(len(offs))
+    if ok.sum() < 3:
+        return out
+    for k, o in enumerate(offs):
+        a = np.interp(grid - o, t[ok], x[ok], left=0.0, right=0.0)
+        a = a - a.mean()
+        out[k] = float(a @ b) / ((np.linalg.norm(a) or 1.0) * nb)
+    return out
+
+
+def fused_offset(pose_t, T, phone_motion, frame_t, frames, motion, search, predicted, prior_sigma, step=0.02):
+    """Clock offset from three weak cues fused with the file-clock prior (2026-10-30 lesson: any single cue
+    picks a wrong peak on some takes).
+      1. whole-frame phone motion  vs ultrasound frame-to-frame motion   (taps, hand movement)
+      2. 3-D cube speed            vs ultrasound frame-to-frame motion   (probe moving vs still)
+      3. signed cube velocity along its main axis vs signed vertical image flow (either sign)
+    Each curve is clipped at 0, scaled to its own max, summed, and multiplied by a Gaussian prior around the
+    file-clock prediction. Returns (offset, peak/next-peak ratio >1 s away, {signal: (peak offset, corr)})."""
+    offs = np.arange(search[0], search[1], step)
+    grid = np.arange(frame_t[0], frame_t[-1], step)
+    us_m = smooth_signal(frame_t, np.minimum(motion, np.percentile(motion, 99)), 0.3)
+    us_y = smooth_signal(frame_t, us_flow_y(frames), 0.25)
+    pm = smooth_signal(pose_t, np.minimum(phone_motion, np.percentile(phone_motion, 99)), 0.3)
+    sp = pose_speed(pose_t, T)
+    sp = smooth_signal(pose_t, np.minimum(sp, np.nanpercentile(sp, 99)) if np.isfinite(sp).any() else sp, 0.3)
+    pos = T[:, :3, 3]
+    ok = np.isfinite(pos[:, 0])
+    vel = np.full(len(pose_t), np.nan)
+    if ok.sum() > 10:
+        P = pos[ok] - pos[ok].mean(axis=0)
+        _, V = np.linalg.eigh(P.T @ P)
+        proj = pos @ V[:, -1]
+        vel[1:] = np.diff(proj) / np.maximum(np.diff(pose_t), 1e-6)
+        vel[np.abs(vel) > 300] = np.nan
+    c1 = corr_curve(offs, grid, pose_t, pm, frame_t, us_m)
+    c2 = corr_curve(offs, grid, pose_t, sp, frame_t, us_m)
+    c3 = np.abs(corr_curve(offs, grid, pose_t, smooth_signal(pose_t, vel, 0.25), frame_t, us_y))
+    peaks = {"frame": (float(offs[c1.argmax()]), float(c1.max())), "pose": (float(offs[c2.argmax()]), float(c2.max())),
+             "flow": (float(offs[c3.argmax()]), float(c3.max()))}
+    fused = np.zeros(len(offs))
+    for c in (c1, c2, c3):
+        c = np.clip(c, 0, None)
+        if c.max() > 0:
+            fused += c / c.max()
+    if predicted is not None and prior_sigma > 0:
+        fused *= np.exp(-0.5 * ((offs - predicted) / prior_sigma) ** 2)
+    k = int(fused.argmax())
+    far = np.abs(offs - offs[k]) > 1.0
+    sharp = float(fused[k] / fused[far].max()) if far.any() and fused[far].max() > 0 else float("inf")
+    return float(offs[k]), sharp, peaks
 
 
 def clock_offset(pose_t, speed, frame_t, motion, search=(-40.0, 40.0), step=0.01):
@@ -126,7 +269,9 @@ def main() -> None:
     ap.add_argument("--phone", required=True, help="phone video of the cube for this take")
     ap.add_argument("--camera", required=True, help="camera.json for the phone (calibrate_camera.py)")
     ap.add_argument("--screen", required=True, help="screen.json (crop + mm per pixel) from pick_crop.py")
-    ap.add_argument("--marker-mm", type=float, default=35.0)
+    ap.add_argument("--marker-mm", type=float, default=None, help="printed marker size (default 35, or the layout file's)")
+    ap.add_argument("--layout", default=None, help="cube layout JSON (edge_mm, marker_mm, face_ids, corner_shift); see CubeSpec.from_json")
+    ap.add_argument("--search-halfwidth", type=float, default=3.0, help="half-width (s) of the offset search around the file-clock prediction")
     ap.add_argument("--edge-mm", type=float, default=None, help="cube edge; default marker + 8")
     ap.add_argument("--downsample", type=int, default=2, help="shrink the cropped ultrasound image by this factor")
     ap.add_argument("--every", type=int, default=1, help="track every Nth phone frame")
@@ -135,16 +280,24 @@ def main() -> None:
     ap.add_argument("--clock-delta", type=float, default=1.3,
                     help="laptop clock minus phone clock (s), measured once per session from a clean jiggle take")
     ap.add_argument("--offset", type=float, default=None, help="skip the search and use this offset (s)")
-    ap.add_argument("--sync", default="frame", choices=["frame", "marker"],
-                    help="phone signal for the clock offset: whole-frame motion (default) or marker pixel speed")
+    ap.add_argument("--sync", default="fused", choices=["fused", "frame", "marker", "pose"],
+                    help="phone signal for the clock offset: whole-frame motion (default), marker pixel speed, or 3-D cube speed from the poses")
+    ap.add_argument("--prior-sigma", type=float, default=1.5, help="fused sync: width (s) of the file-clock prior")
     ap.add_argument("--min-corr", type=float, default=0.15,
                     help="below this correlation the search is distrusted and the file-clock prediction is used")
     a = ap.parse_args()
+    a.marker_mm_given = a.marker_mm is not None
+    if a.marker_mm is None:
+        a.marker_mm = 35.0
 
     take = Path(a.take)
     cam = json.load(open(a.camera))
     K, dist = np.array(cam["K"]), np.array(cam["dist"])
-    cube = CubeSpec(edge_mm=a.edge_mm or a.marker_mm + 8, marker_mm=a.marker_mm)
+    if a.layout:
+        cube = CubeSpec.from_json(a.layout, marker_mm=a.marker_mm if a.marker_mm_given else None)
+    else:
+        cube = CubeSpec(edge_mm=a.edge_mm or a.marker_mm + 8, marker_mm=a.marker_mm)
+    print(f"cube: marker {cube.marker_mm:g} mm, edge {cube.edge_mm:g} mm, faces {cube.face_ids}, shifts {cube.corner_shift}")
     tracker = ArucoCubeTracker(K, dist, cube)
     screen = json.load(open(a.screen))
     r0, r1, c0, c1 = screen["crop"]
@@ -175,16 +328,41 @@ def main() -> None:
     frames, frame_t = frames[:n], frame_t[:n]
     print(f"  {n} frames {frames.shape[2]}x{frames.shape[1]} px, {mm_px:.4f} mm/px after downsample")
 
-    speed = phone_motion if a.sync == "frame" else pixel_speed(pose_t, px)
-    if np.isfinite(speed).any():
-        speed = np.minimum(speed, np.nanpercentile(speed, 99))
     motion = frame_motion(frames)
     predicted = predicted_offset(a.phone, take, a.clock_delta)
-    if a.offset is None:
+    sharp = float("nan")
+    peaks = {}
+    if a.offset is not None:
+        offset, corr, second = a.offset, float("nan"), float("nan")
+        print(f"using given offset {offset:+.3f} s")
+    elif a.sync == "fused":
         if a.search is not None:
             search = tuple(a.search)
         elif predicted is not None:
-            search = (predicted - 3.0, predicted + 3.0)
+            search = (predicted - a.search_halfwidth, predicted + a.search_halfwidth)
+        else:
+            search = (-40.0, 40.0)
+        offset, sharp, peaks = fused_offset(pose_t, T, phone_motion, frame_t, frames, motion, search,
+                                            predicted, a.prior_sigma)
+        corr, second = sharp, float("nan")
+        print(f"clock offset laptop = phone + {offset:+.3f} s  (fused; peak/next-peak {sharp:.2f}; per-signal peaks "
+              + ", ".join(f"{k} {v[0]:+.2f} (corr {v[1]:.2f})" for k, v in peaks.items())
+              + f"; predicted from file clocks {predicted if predicted is None else round(predicted, 1)}, searched {search[0]:.1f}..{search[1]:.1f})")
+        if sharp < 1.3:
+            print("  weak peak: treat this offset as approximate (about +-1.5 s)")
+    else:
+        if a.sync == "frame":
+            speed = phone_motion
+        elif a.sync == "pose":
+            speed = pose_speed(pose_t, T)        # 3-D cube-centre speed (mm/s); clean now that single-face poses do not flip
+        else:
+            speed = pixel_speed(pose_t, px)
+        if np.isfinite(speed).any():
+            speed = np.minimum(speed, np.nanpercentile(speed, 99))
+        if a.search is not None:
+            search = tuple(a.search)
+        elif predicted is not None:
+            search = (predicted - a.search_halfwidth, predicted + a.search_halfwidth)
         else:
             search = (-40.0, 40.0)
         offset, corr, second = clock_offset(pose_t, speed, frame_t, motion, search)
@@ -195,9 +373,6 @@ def main() -> None:
             why = "correlation too weak" if corr < a.min_corr else "best offset sits on the search-window edge (no real peak)"
             print(f"  {why}; using the file-clock prediction {predicted:+.1f} s (about +-1.5 s)")
             offset, corr = predicted, float("nan")
-    else:
-        offset, corr, second = a.offset, float("nan"), float("nan")
-        print(f"using given offset {offset:+.3f} s")
 
     w = RecordingWriter(take, frames.shape[1:], compress=True)
     for t, g in zip(frame_t, frames):
@@ -207,7 +382,8 @@ def main() -> None:
     old = json.load(open(take / "meta.json")) if (take / "meta.json").exists() else {}
     old.update(phone_video=str(a.phone), phone_fps_nominal=phone_fps, phone_frames=n_phone,
                phone_tracked_fraction=float(tracked.mean()), clock_offset_s=offset, clock_offset_corr=corr,
-               clock_offset_second_peak=second, clock_offset_predicted=predicted, sync_signal=a.sync, camera_json=str(a.camera), screen_json=str(a.screen),
+               clock_offset_second_peak=second, clock_offset_predicted=predicted, sync_signal=a.sync,
+               clock_offset_sharpness=sharp, clock_offset_signal_peaks={k: list(v) for k, v in peaks.items()}, camera_json=str(a.camera), screen_json=str(a.screen),
                crop=[r0, r1, c0, c1], downsample=a.downsample, mm_per_px=mm_px, lag_s=0.0,
                marker_mm=a.marker_mm, edge_mm=cube.edge_mm, pipeline="phone_to_bench.py")
     folder = w.close(old)

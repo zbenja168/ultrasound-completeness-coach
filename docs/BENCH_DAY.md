@@ -124,10 +124,26 @@ What the recordings showed once they were processed:
 7. **Write notes.txt before leaving**: which take is the keeper, the slide reference and its distances, the
    cube-to-probe-face distance, and photos of the cube on the probe. None of this was in the 2026-10-22 upload.
 
+## Lessons from 2026-10-30 (second session)
+
+The rig changes worked: 87-97 % tracking in sweeps, sub-millimetre still noise (`docs/BENCH_2026-10-30_RESULTS.md`).
+What still cost time:
+
+1. **Do not touch the phone zoom** between the chessboard clip and the takes. The two chessboard clips disagreed
+   by 2x in focal length; the focal length had to be fitted from the cube itself (two faces at right angles are a
+   3-D calibration object, see the cube-fit note in the results doc).
+2. **Record how the markers are glued.** The layout had to be recovered from the data (`cube_layout.json`). Write
+   the id on each face in notes.txt, or glue them exactly as the sheet says, and photograph the cube.
+3. **Measure the cube and the marker** with a ruler and write both down (marker edge, cube edge).
+4. **Taps must be visible to the phone with the cube tracked.** Taps done before the phone was recording, or with
+   the cube hidden, leave only weak cues for the clock sync. Start the phone, start the laptop, then three taps
+   with the cube in view.
+5. **Hold a full second at every slide mark**, and write the marks down (chessboard squares count: 19 mm each).
+
 Processing chain for a phone-camera session:
 
     python scripts/calibrate_camera.py --images <chessboard frames> --board 8x6 --square-mm 25 --out data/bench_DATE/phone_camera.json
-    python scripts/phone_to_bench.py data/bench_DATE/us/<take> --phone data/bench_DATE/phone/<clip>.mp4         --camera data/bench_DATE/phone_camera.json --screen data/bench_DATE/screen.json
+    python scripts/phone_to_bench.py data/bench_DATE/us/<take> --phone data/bench_DATE/phone/<clip>.mp4         --camera data/bench_DATE/phone_camera.json --screen data/bench_DATE/screen.json --layout data/bench_DATE/cube_layout.json --clock-delta 0 --search-halfwidth 4
     python scripts/bench_coverage.py data/bench_DATE/us/full_01 --takes data/bench_DATE/us/partial_01 ... --face-mm <measured>
 
 ## After the day (Claude)

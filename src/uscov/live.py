@@ -92,6 +92,19 @@ class CubeSpec:
     marker_mm: float = 24.0
     face_ids: dict[str, int] = field(default_factory=lambda: {"+x": 0, "-x": 1, "+y": 2, "-y": 3, "+z": 4, "-z": 5})
     dictionary: str = "DICT_4X4_50"
+    # in-plane rotation of a glued marker, per marker id, in quarter turns (cyclic shift of its corner order);
+    # fitted from two-face frames when the cube was not assembled exactly as the sheet says (2026-10-30)
+    corner_shift: dict[int, int] = field(default_factory=dict)
+
+    @classmethod
+    def from_json(cls, path, marker_mm: float | None = None) -> "CubeSpec":
+        """Layout file: {"edge_mm", "marker_mm", "face_ids": {"+z": 2, ...}, "corner_shift": {"4": 2}}."""
+        import json
+        d = json.load(open(path))
+        return cls(edge_mm=float(d["edge_mm"]), marker_mm=float(marker_mm or d["marker_mm"]),
+                   face_ids={k: int(v) for k, v in d["face_ids"].items()},
+                   corner_shift={int(k): int(v) for k, v in d.get("corner_shift", {}).items()},
+                   dictionary=d.get("dictionary", "DICT_4X4_50"))
 
     def board(self, cv2):
         """cv2.aruco.Board with each marker's 4 corners in the cube frame (origin at cube centre)."""
@@ -109,7 +122,9 @@ class CubeSpec:
         ids, objpts = [], []
         for face, mid in self.face_ids.items():
             ids.append(mid)
-            objpts.append(np.array(faces[face], dtype=np.float32))
+            pts = np.array(faces[face], dtype=np.float32)
+            s = self.corner_shift.get(mid, 0) % 4
+            objpts.append(np.roll(pts, -s, axis=0) if s else pts)
         dictionary = cv2.aruco.getPredefinedDictionary(getattr(cv2.aruco, self.dictionary))
         return cv2.aruco.Board(np.array(objpts, dtype=np.float32), dictionary, np.array(ids, dtype=np.int32))
 
@@ -154,32 +169,67 @@ class ArucoCubeTracker:
             return None, 0
         if len(ids) >= 2:
             return self._board_pose(corners, ids)
-        obj, img = self.board.matchImagePoints(corners, ids)
-        if obj is None or len(obj) < 4:
+        mid = int(np.asarray(ids).ravel()[0])
+        T_mc = self._marker_to_cube().get(mid)
+        if T_mc is None:
             return None, 0
+        # Solve the marker in its own frame (a z=0 square, IPPE_SQUARE) and compose with the fixed marker->cube
+        # transform. Passing the board's 3-D corners of a side face (a plane that is not z=0) straight to IPPE
+        # produced poses flipped 180 degrees about an in-plane axis (2026-10-30: cube centre mirrored through the
+        # face, 57 mm jumps whenever the second face dropped out).
+        sq = self._canonical_square()
+        img = np.asarray(corners[0], dtype=np.float64).reshape(4, 2)
         try:
-            n, rvecs, tvecs, errs = self.cv2.solvePnPGeneric(obj, img, self.K, self.dist, flags=self.cv2.SOLVEPNP_IPPE)
+            n, rvecs, tvecs, errs = self.cv2.solvePnPGeneric(sq, img, self.K, self.dist,
+                                                             flags=self.cv2.SOLVEPNP_IPPE_SQUARE)
         except self.cv2.error:
             return self._board_pose(corners, ids)
+        T_cm = np.linalg.inv(T_mc)
         cands = []
         for rv, tv, e in zip(rvecs, tvecs, np.asarray(errs).ravel()):
-            if tv.ravel()[2] <= 0:
-                continue
             Rm, _ = self.cv2.Rodrigues(rv)
             T = np.eye(4)
             T[:3, :3] = Rm
             T[:3, 3] = tv.ravel()
+            T = T @ T_cm                      # cube -> camera
+            if tv.ravel()[2] <= 0 or T[2, 3] <= 0:
+                continue
             cands.append((T, float(e)))
         if not cands:
             return None, 0
-        if prev is not None and not np.any(np.isnan(prev)):
+        cands.sort(key=lambda c: c[1])
+        if len(cands) > 1 and prev is not None and not np.any(np.isnan(prev)) and cands[1][1] < 2.0 * cands[0][1]:
+            # genuinely ambiguous tilt: keep the solution closest to the last accepted pose
             def dang(T):
                 c = (np.trace(prev[:3, :3].T @ T[:3, :3]) - 1) / 2
                 return float(np.arccos(np.clip(c, -1, 1)))
             cands.sort(key=lambda c: dang(c[0]))
-        else:
-            cands.sort(key=lambda c: c[1])
         return cands[0][0], 1
+
+    def _canonical_square(self) -> np.ndarray:
+        m = self.cube.marker_mm / 2.0
+        return np.array([[-m, m, 0], [m, m, 0], [m, -m, 0], [-m, -m, 0]], dtype=np.float64)
+
+    def _marker_to_cube(self) -> dict:
+        """4x4 marker frame (canonical z=0 square, normal towards the viewer) -> cube frame, per marker id, fitted
+        rigidly to the board's corner coordinates so corner_shift and face placement are honoured."""
+        if getattr(self, "_m2c", None) is not None:
+            return self._m2c
+        out = {}
+        sq = self._canonical_square()
+        for pts, mid in zip(self.board.getObjPoints(), np.asarray(self.board.getIds()).ravel()):
+            P = np.asarray(pts, dtype=np.float64).reshape(4, 3)
+            ca, cb = sq.mean(axis=0), P.mean(axis=0)
+            H = (sq - ca).T @ (P - cb)
+            U, _, Vt = np.linalg.svd(H)
+            d = np.sign(np.linalg.det(Vt.T @ U.T))
+            Rm = Vt.T @ np.diag([1, 1, d]) @ U.T
+            T = np.eye(4)
+            T[:3, :3] = Rm
+            T[:3, 3] = cb - Rm @ ca
+            out[int(mid)] = T
+        self._m2c = out
+        return out
 
     def pose(self, gray: np.ndarray) -> tuple[np.ndarray | None, int]:
         """Returns (4x4 cube->camera or None, number of markers used)."""
