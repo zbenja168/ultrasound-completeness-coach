@@ -13,7 +13,7 @@ plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 7, "axes.edgecol
 # ---------- geometry (mm) ----------
 CUBE = 60.0; RECESS = 52.0; STICKER = 51.0; MARKER = 35.0; RIM = (CUBE - RECESS) / 2
 CLIP_Y0, CLIP_Y1 = 108.0, 128.0           # clip band on the handle, above the hand
-STALK_L, STALK_W, LEAN = 50.0, 12.0, 30.0  # stalk length, width, backward lean (deg)
+STALK_L, STALK_W, LEAN = 60.0, 12.0, 25.0  # stalk length, width, FORWARD lean (deg), drawn towards +x
 HAND_Y0, HAND_Y1 = 55.0, 105.0
 HANDLE_T, HANDLE_W = 24.0, 40.0            # handle thickness (side view) and width (front view) [measure]
 d = np.array([np.sin(np.radians(LEAN)), np.cos(np.radians(LEAN))])
@@ -72,8 +72,12 @@ def side_view(ax):
     ax.add_patch(Polygon(body, closed=True, fc="#c9ced6", ec=INK, lw=0.9))
     ax.text(0, 30, "probe", ha="center", fontsize=6.5, color=INK)
     t = np.linspace(0, 1, 50)
-    ax.plot(-6 * t ** 2, 150 + 120 * t, color="#555", lw=3, solid_capstyle="round")
-    ax.text(-10, 262, "cable", fontsize=6.5, color=INK, ha="right")
+    ax.plot([0, 0], [150, 192], color="#555", lw=4.5, solid_capstyle="round")                 # stiff strain-relief boot
+    ax.plot(-70 * t ** 2, 192 + 60 * t - 22 * t ** 2, color="#555", lw=3, solid_capstyle="round")   # cable drapes to the operator
+    ax.text(-30, 243, "cable drapes back\nover the wrist", fontsize=6.5, color=INK, ha="right", va="bottom")
+    ax.text(-66, 150, "OPERATOR SIDE\n(cable, wrist, forearm)", fontsize=6.5, color=GREY, ha="left", va="center", fontweight="bold")
+    ax.text(160, 20, "PATIENT'S\nFAR SIDE", fontsize=6.5, color=GREY, ha="right", va="center", fontweight="bold")
+    ax.text(36, 62, "Tilting the probe 45° towards the cube\nleaves ~74 mm between cube and skin;\n60° still leaves ~24 mm (flat surface).\nMore upright stalk = more clearance;\na longer stalk does not help.", fontsize=6.3, color=INK, ha="left", va="center")
     ax.add_patch(Rectangle((-HANDLE_T / 2 - 4, HAND_Y0), HANDLE_T + 8, HAND_Y1 - HAND_Y0, fc="none", ec=GREY, lw=0.7, ls=(0, (2, 2))))
     ax.text(-HANDLE_T / 2 - 7, (HAND_Y0 + HAND_Y1) / 2, "scanning hand\n(grip zone)\nnothing printed here", ha="right", va="center", fontsize=6.5, color=GREY)
     ax.add_patch(Rectangle((-HANDLE_T / 2 - 3, CLIP_Y0), HANDLE_T + 6, CLIP_Y1 - CLIP_Y0, fc=PRINT, ec=INK, lw=0.9))
@@ -94,15 +98,15 @@ def side_view(ax):
     cam = p3
     ax.add_patch(FancyBboxPatch((cam[0] - 6, cam[1] - 11), 12, 22, boxstyle="round,pad=0.6", fc="white", ec=BLUE, lw=0.9))
     ax.add_patch(Circle((cam[0], cam[1] + 5), 2.2, fc=BLUE, ec="none"))
-    ax.text(cam[0] + 10, cam[1], "phone camera on tripod\n~30 cm from the cube,\nlooking down 45°: sees the\ntop face + one side face", fontsize=6.5, color=BLUE, va="center", ha="left")
+    ax.text(cam[0] + 10, cam[1], "phone on a tripod on the far\nside of the patient, ~30 cm\nfrom the cube, looking down 45°:\nsees the top + front faces", fontsize=6.5, color=BLUE, va="center", ha="left")
     dim_h(ax, CUBE_C[0] - CUBE / 2, CUBE_C[0] + CUBE / 2, S1[1] + CUBE + 8, f"{CUBE:.0f}")
     ext(ax, (CUBE_C[0] - CUBE / 2, S1[1] + CUBE), (CUBE_C[0] - CUBE / 2, S1[1] + CUBE + 9))
     ext(ax, (CUBE_C[0] + CUBE / 2, S1[1] + CUBE), (CUBE_C[0] + CUBE / 2, S1[1] + CUBE + 9))
     m = (S0 + S1) / 2 + n * 1.9
     ax.annotate("", xy=S0 + n * 1.9, xytext=S1 + n * 1.9, arrowprops=dict(arrowstyle="<->", color=INK, lw=0.7, shrinkA=0, shrinkB=0))
-    ax.text(m[0] + 3, m[1] + 4, f"stalk {STALK_L:.0f}\n(50-80 ok, shorter is better:\nless height = less error\nat the probe tip)", ha="left", va="center", fontsize=6.5)
+    ax.text(m[0] + 3, m[1] + 4, f"stalk {STALK_L:.0f}\n(50-80 ok; more upright\n= more tilt clearance,\nlonger = more lever arm)", ha="left", va="center", fontsize=6.5)
     ax.plot([S0[0], S0[0]], [S0[1], S0[1] + 20], color=GREY, lw=0.5, ls=":")
-    ax.text(S0[0] + 12, CLIP_Y0 + 2, f"stalk leans back {LEAN:.0f}°\nso the cube clears the cable", fontsize=6.5, va="bottom")
+    ax.text(S0[0] + 12, CLIP_Y0 + 2, f"stalk leans FORWARD {LEAN:.0f}°, over the\npatient, away from cable and wrist", fontsize=6.5, va="bottom")
     dim_v(ax, CLIP_Y0, CLIP_Y1, -HANDLE_T / 2 - 10, f"clip {CLIP_Y1 - CLIP_Y0:.0f}", dx=-3, rot=0)
     xr = 118
     dim_v(ax, 0, CUBE_C[1], xr, f"cube centre to probe face\n≈{CUBE_C[1]:.0f} here. Exact value is read\nfrom the CAD and typed into\nthe software, any value is fine", dx=3, rot=0)
@@ -118,26 +122,25 @@ def side_view(ax):
 
 # ---------- B: front view ----------
 def front_view(ax):
-    setup(ax, (-80, 80), (-20, 255))
-    title(ax, "B", "Front view (button side); stalk hidden behind")
+    setup(ax, (-80, 80), (-20, 272))
+    title(ax, "B", "Front view (button side), stalk towards you")
     ax.add_patch(Rectangle((-80, -20), 160, 20, fc=SKIN, ec="none"))
     body = [(-34, 0), (34, 0), (30, 25), (HANDLE_W / 2, 58), (HANDLE_W / 2, 150), (-HANDLE_W / 2, 150), (-HANDLE_W / 2, 58), (-30, 25)]
-    ax.add_patch(Rectangle((-CUBE / 2, S1[1]), CUBE, CUBE, fc="white", ec=INK, lw=1.0))
-    ax.add_patch(Rectangle((-RECESS / 2, S1[1] + RIM), RECESS, RECESS, fc=LIGHT, ec=GREY, lw=0.5))
-    marker(ax, 0, CUBE_C[1], MARKER, seed=7)
-    ax.text(-CUBE / 2 + 1.5, S1[1] + CUBE - 1.5, "2", fontsize=5, ha="left", va="top")
-    ax.add_patch(Rectangle((-10, S1[1] - 3), 20, 3, fc=PRINT, ec=INK, lw=0.9))
-    ax.plot([-STALK_W / 2, -STALK_W / 2, STALK_W / 2, STALK_W / 2], [150, S1[1] - 3, S1[1] - 3, 150], color=INK, lw=0.6, ls=(0, (3, 2)))
     ax.add_patch(Polygon(body, closed=True, fc="#c9ced6", ec=INK, lw=0.9))
     ax.plot([0, 0], [150, 240], color="#555", lw=3, solid_capstyle="round")
     for yb in (76, 85):
         ax.add_patch(Circle((0, yb), 2.6, fc="white", ec=INK, lw=0.7))
     note(ax, (3, 80.5), (26, 66), "buttons (L4-12t-RS):\nmust stay uncovered,\nclip sits above them")
-    ax.add_patch(Rectangle((-HANDLE_W / 2 - 3, CLIP_Y0), 3, CLIP_Y1 - CLIP_Y0, fc=PRINT, ec=INK, lw=0.9))
-    ax.add_patch(Rectangle((HANDLE_W / 2, CLIP_Y0), 3, CLIP_Y1 - CLIP_Y0, fc=PRINT, ec=INK, lw=0.9))
-    ax.plot([-HANDLE_W / 2, HANDLE_W / 2], [CLIP_Y0, CLIP_Y0], color=INK, lw=0.6, ls=(0, (3, 2)))
-    ax.plot([-HANDLE_W / 2, HANDLE_W / 2], [CLIP_Y1, CLIP_Y1], color=INK, lw=0.6, ls=(0, (3, 2)))
-    ax.add_patch(Rectangle((-STALK_W / 2, CLIP_Y0 + 4), STALK_W, CLIP_Y1 - CLIP_Y0 - 8, fc="none", ec=INK, lw=0.6, ls=(0, (3, 2))))
+    # clip: front wall faces the viewer, with the stalk root on it
+    ax.add_patch(Rectangle((-HANDLE_W / 2 - 3, CLIP_Y0), HANDLE_W + 6, CLIP_Y1 - CLIP_Y0, fc=PRINT, ec=INK, lw=0.9))
+    ax.add_patch(Rectangle((-9, CLIP_Y0), 18, CLIP_Y1 - CLIP_Y0, fc=PRINT, ec=INK, lw=0.9))
+    # stalk in front of the handle, then boss and cube in front of the cable
+    ax.add_patch(Rectangle((-STALK_W / 2, CLIP_Y1 - 1), STALK_W, S1[1] - 3 - CLIP_Y1 + 1, fc=PRINT, ec=INK, lw=0.9))
+    ax.add_patch(Rectangle((-11, S1[1] - 6), 22, 6, fc=PRINT, ec=INK, lw=0.9))
+    ax.add_patch(Rectangle((-CUBE / 2, S1[1]), CUBE, CUBE, fc="white", ec=INK, lw=1.0))
+    ax.add_patch(Rectangle((-RECESS / 2, S1[1] + RIM), RECESS, RECESS, fc=LIGHT, ec=GREY, lw=0.5))
+    marker(ax, 0, CUBE_C[1], MARKER, seed=7)
+    ax.text(-CUBE / 2 + 1.5, S1[1] + CUBE - 1.5, "2", fontsize=5, ha="left", va="top")
     ax.annotate("", xy=(-HANDLE_W / 2, CLIP_Y0 - 8), xytext=(HANDLE_W / 2, CLIP_Y0 - 8), arrowprops=dict(arrowstyle="<->", color=INK, lw=0.7, shrinkA=0, shrinkB=0))
     ax.text(HANDLE_W / 2 + 4, CLIP_Y0 - 8, "handle width\n[measure today]", fontsize=6.5, va="center", ha="left")
     ext(ax, (-HANDLE_W / 2, CLIP_Y0), (-HANDLE_W / 2, CLIP_Y0 - 9)); ext(ax, (HANDLE_W / 2, CLIP_Y0), (HANDLE_W / 2, CLIP_Y0 - 9))
@@ -213,10 +216,10 @@ def clip_section(ax):
         ax.add_patch(FancyBboxPatch((cx - HANDLE_W / 2 - 4, -HANDLE_T / 2 - 4), HANDLE_W + 8, HANDLE_T + 8, boxstyle="round,pad=0,rounding_size=12", fc=PRINT, ec=INK, lw=0.9))
         handle(ax, cx)
         if mode == "snap":
-            ax.add_patch(Rectangle((cx - 12, -HANDLE_T / 2 - 5), 24, 6, fc="white", ec="none"))
-            ax.plot([cx - 12, cx - 12], [-HANDLE_T / 2 - 4, -HANDLE_T / 2 - 1], color=INK, lw=0.9)
-            ax.plot([cx + 12, cx + 12], [-HANDLE_T / 2 - 4, -HANDLE_T / 2 - 1], color=INK, lw=0.9)
-            ax.text(cx, -HANDLE_T / 2 - 9, "opening at the front (button side), ~24 mm:\nflex the walls open to snap it on", ha="center", va="top", fontsize=6)
+            ax.add_patch(Rectangle((cx - 16, -HANDLE_T / 2 - 5), 32, 6, fc="white", ec="none"))
+            ax.plot([cx - 16, cx - 16], [-HANDLE_T / 2 - 4, -HANDLE_T / 2 - 1], color=INK, lw=0.9)
+            ax.plot([cx + 16, cx + 16], [-HANDLE_T / 2 - 4, -HANDLE_T / 2 - 1], color=INK, lw=0.9)
+            ax.text(cx, -HANDLE_T / 2 - 9, "opening at the BACK (cable side),\nhandle width minus ~8 mm; flex to snap on", ha="center", va="top", fontsize=6)
             ax.text(-67, HANDLE_T / 2 + 15, "E1  snap-fit C-clip (simplest, no hardware)\nPLA may crack when flexed: PETG helps", ha="left", va="bottom", fontsize=6.5, fontweight="bold")
         else:
             ax.plot([cx - HANDLE_W / 2 - 4, cx - HANDLE_W / 2 - 1], [0, 0], color=INK, lw=0.9)
@@ -229,7 +232,7 @@ def clip_section(ax):
             ax.text(cx - HANDLE_W / 2 - 14, -11, "M3 screw\n+ nut trap", ha="right", va="top", fontsize=6)
             ax.text(cx + HANDLE_W / 2 + 8, -4, "hinge pin\nor tongue", ha="left", va="top", fontsize=6)
         ax.add_patch(Rectangle((cx - STALK_W / 2, HANDLE_T / 2 + 4), STALK_W, 6, fc=PRINT, ec=INK, lw=0.9))
-        ax.text(cx + STALK_W / 2 + 2, HANDLE_T / 2 + 7, "stalk (back side)", fontsize=6, va="center")
+        ax.text(cx + STALK_W / 2 + 2, HANDLE_T / 2 + 7, "stalk (FRONT side)", fontsize=6, va="center")
     ax.text(-67, -38, "Both: 3 mm wall, 20 mm tall, 1 mm foam tape inside (dotted) so the probe is not scratched; cable and buttons\nuntouched; must not rotate or slide once on (any slip moves every measurement). Split line = the two halves.", fontsize=6, va="bottom")
 
 
@@ -241,12 +244,12 @@ def spec_text(ax):
         ("Cube", f"{CUBE:.0f} mm edge (55-60 ok), hollow, 2 mm walls, matte WHITE"),
         ("Marker faces", f"5 faces (all but bottom): recess {RECESS:.0f} x {RECESS:.0f} x 0.5 mm, flat, no supports on them"),
         ("Labels", "face numbers 1-5 (3 mm) + up-arrow on side faces, embossed 0.4 mm on the rim"),
-        ("Stalk", f"{STALK_L:.0f} mm (50-80), {STALK_W:.0f} mm round or 12 x 8 oval, leans back ~{LEAN:.0f}°, stiff"),
-        ("Clip", "wraps the handle above the hand, 20 mm tall, 3 mm wall, snap (E1) or M3 clamp (E2), foam inside"),
+        ("Stalk", f"{STALK_L:.0f} mm, {STALK_W:.0f} mm round, leans FORWARD ~{LEAN:.0f}° over the patient (away from cable and wrist)"),
+        ("Clip", "above the hand, 20 mm tall, 3 mm wall, M3 clamp (E2) or snap open at the back (E1)"),
         ("Keep free", "the scanning grip, both buttons (L4-12t-RS), the cable exit"),
         ("Pieces", "clip + stalk + cube as ONE part per probe (C1-5, L4-12t-RS); 2 copies each = 4 prints"),
         ("Material", "PLA fine (PETG if snap-fit); white, matte; no glossy or dark filament"),
-        ("Camera", "phone ~30 cm away, 45° down: top face + one side face visible in the normal grip"),
+        ("Camera", "phone ~30 cm away on the far side of the patient, 45° down: top + front face visible"),
         ("Tolerances", "nothing tight: ±0.5 mm is fine everywhere except the clip's grip on the handle"),
     ]
     y = 0.93
@@ -294,7 +297,7 @@ def camera_view(ax):
     ax.plot([0, 0], [15 - a * 1.5, -30], color=INK, lw=4, solid_capstyle="round", alpha=0.25)
     ax.text(3, -24, "stalk", fontsize=6, color=GREY)
     ax.text(0, -36, "Two faces at right angles in every frame is what gives the tracker a stable 3-D pose.\n"
-                    "This is why the cube sits above the hand on a stalk: fingers must never cover a face.\n"
+                    "So the cube sits on a stalk in front of and above the hand: fingers never cover a face.\n"
                     "A third face (2) caught at a glancing angle helps too.", ha="center", fontsize=6.5, va="top")
 
 
