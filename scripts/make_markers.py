@@ -38,7 +38,13 @@ def main():
     ap.add_argument("--paper", default="letter", choices=["letter", "a4"])
     ap.add_argument("--out", default="outputs/print/markers.pdf")
     ap.add_argument("--png", action="store_true", help="also write a PNG preview of each page next to the PDF")
+    ap.add_argument("--cube-faces", action="store_true",
+                    help="label each marker with the printed cube's face number (1 top, 2 front, 3 right, 4 back, 5 left; "
+                         "the sixth marker is a spare) instead of the axis name")
     a = ap.parse_args()
+    # printed cube (cad/marker_cube_mount.scad): face number -> axis name on the sheet
+    cube_face_names = {"+z": "face 1 (top)", "-y": "face 2 (front)", "+x": "face 3 (right)",
+                       "+y": "face 4 (back)", "-x": "face 5 (left)", "-z": "spare (not used)"}
     W, H = (215.9, 279.4) if a.paper == "letter" else (210.0, 297.0)
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -72,7 +78,8 @@ def main():
             ax.imshow(render_marker_image(mid, 600, cube.dictionary), cmap="gray", vmin=0, vmax=255,
                       interpolation="nearest")
             ax.axis("off")
-            fig.text((x0 + face / 2) / W, (y0 - 3.5) / H, f"id {mid}  face {face_name}", ha="center", fontsize=7)
+            label = f"id {mid}  {cube_face_names[face_name]}" if a.cube_faces else f"id {mid}  face {face_name}"
+            fig.text((x0 + face / 2) / W, (y0 - 3.5) / H, label, ha="center", fontsize=7)
         pdf.savefig(fig)
         pages.append(fig)
         # page 2: chessboard, shrunk to fit the paper with 12 mm margins
