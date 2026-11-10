@@ -142,7 +142,7 @@ def front_view(ax):
     marker(ax, 0, CUBE_C[1], MARKER, seed=7)
     ax.text(-CUBE / 2 + 1.5, S1[1] + CUBE - 1.5, "2", fontsize=5, ha="left", va="top")
     ax.annotate("", xy=(-HANDLE_W / 2, CLIP_Y0 - 8), xytext=(HANDLE_W / 2, CLIP_Y0 - 8), arrowprops=dict(arrowstyle="<->", color=INK, lw=0.7, shrinkA=0, shrinkB=0))
-    ax.text(HANDLE_W / 2 + 4, CLIP_Y0 - 8, "handle width\n[measure today]", fontsize=6.5, va="center", ha="left")
+    ax.text(HANDLE_W / 2 + 4, CLIP_Y0 - 8, "handle width\n[measure]", fontsize=6.5, va="center", ha="left")
     ext(ax, (-HANDLE_W / 2, CLIP_Y0), (-HANDLE_W / 2, CLIP_Y0 - 9)); ext(ax, (HANDLE_W / 2, CLIP_Y0), (HANDLE_W / 2, CLIP_Y0 - 9))
     dim_h(ax, -CUBE / 2, CUBE / 2, S1[1] + CUBE + 6, f"{CUBE:.0f}")
     dim_v(ax, 0, CLIP_Y0, -HANDLE_W / 2 - 14, f"{CLIP_Y0:.0f} from\nprobe face\n[adjust to\nthe hand]", dx=-3, rot=0)
@@ -239,7 +239,7 @@ def clip_section(ax):
 # ---------- F: spec table + checklist ----------
 def spec_text(ax):
     ax.axis("off")
-    title(ax, "F", "What to print (summary) and what to measure today")
+    title(ax, "F", "What to print (summary)")
     rows = [
         ("Cube", f"{CUBE:.0f} mm edge (55-60 ok), hollow, 2 mm walls, matte WHITE"),
         ("Marker faces", f"5 faces (all but bottom): recess {RECESS:.0f} x {RECESS:.0f} x 0.5 mm, flat, no supports on them"),
@@ -257,15 +257,7 @@ def spec_text(ax):
         ax.text(0.0, y, k, fontsize=6.8, fontweight="bold", va="top", transform=ax.transAxes)
         ax.text(0.19, y, v, fontsize=6.8, va="top", transform=ax.transAxes)
         y -= 0.062
-    y -= 0.03
-    ax.text(0.0, y, "Measure today (bring calipers and a phone):", fontsize=7, fontweight="bold", va="top", transform=ax.transAxes)
-    y -= 0.062
-    for s in ["handle width and thickness of BOTH probes at 100-130 mm from the probe face (clip zone)",
-              "position of the two buttons on the L4-12t-RS, and the cable-exit diameter",
-              "a photo of each probe with a ruler, side and front, so the handle can be modelled",
-              "Emily's printer, nozzle, filament colours, and the largest part her bed takes (≈ 60 x 90 x 150 mm needed)"]:
-        ax.text(0.02, y, "•  " + s, fontsize=6.8, va="top", transform=ax.transAxes)
-        y -= 0.062
+
 
 
 # ---------- G: what the camera sees ----------
@@ -317,7 +309,7 @@ def page1():
 
 def page2():
     fig = plt.figure(figsize=(11, 8.5))
-    header(fig, "page 2 of 2: face detail, clip options, summary and today's measurements")
+    header(fig, "page 2 of 2: face detail, clip options and summary")
     face_section(fig.add_axes([0.04, 0.60, 0.44, 0.31]))
     clip_section(fig.add_axes([0.52, 0.52, 0.46, 0.39]))
     spec_text(fig.add_axes([0.04, 0.04, 0.44, 0.50]))
